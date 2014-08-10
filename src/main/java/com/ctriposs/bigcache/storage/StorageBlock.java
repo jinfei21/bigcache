@@ -10,6 +10,7 @@ public class StorageBlock implements IStorageBlock {
 
 	/** The index. */
 	private int index;
+	
 	/** The capacity. */
 	private int capacity;
 	
@@ -21,6 +22,9 @@ public class StorageBlock implements IStorageBlock {
 	
 	/** The dirty storage. */
 	private AtomicInteger dirtyStorage = new AtomicInteger(0);
+	
+	/** The used storage. */
+	private AtomicInteger usedStorage = new AtomicInteger(0);
 	
 	/**
 	 * Instantiates a new storage block.
@@ -49,6 +53,7 @@ public class StorageBlock implements IStorageBlock {
 	public byte[] remove(Pointer pointer) throws IOException {
 		byte [] payload = retrieve(pointer);
 		dirtyStorage.addAndGet(pointer.getLength());
+		usedStorage.addAndGet(-1 * pointer.getLength());
 		return payload;
 	}
 
@@ -88,6 +93,7 @@ public class StorageBlock implements IStorageBlock {
 	public Pointer store(Allocation allocation, byte[] payload) throws IOException {
 		Pointer pointer = new Pointer(allocation.getOffset(), allocation.getLength(), this);
 		underlyingStorage.put(allocation.getOffset(), payload);
+		usedStorage.addAndGet(payload.length);
 		return pointer;
 	}
 
@@ -95,10 +101,12 @@ public class StorageBlock implements IStorageBlock {
 	public Pointer update(Pointer pointer, byte[] payload) throws IOException {
 		if (pointer.getLength() >= payload.length) { // has enough space to reuse
 			dirtyStorage.addAndGet(pointer.getLength() - payload.length);
+			usedStorage.addAndGet(-1 * pointer.getLength());
 			Allocation allocation = new Allocation(pointer.getPosition(), payload.length);
 			return store(allocation, payload); // should always return a new pointer
 		} else { // make a move
 			dirtyStorage.addAndGet(pointer.getLength());
+			usedStorage.addAndGet(-1 * pointer.getLength());
 			return store(payload); // may return null because not enough space available
 		}
 	}
@@ -109,14 +117,18 @@ public class StorageBlock implements IStorageBlock {
 	}
 
 	@Override
+	public double getDirtyRatio() {
+		return (this.getDirty() * 1.0) / this.getCapacity();
+	}	
+	
+	@Override
 	public long getCapacity() {
 		return capacity;
 	}
 	
-
 	@Override
-	public double getDirtyRatio() {
-		return (this.getDirty() * 1.0) / this.getCapacity();
+	public long getUsed() {
+		return this.usedStorage.get();
 	}
 
 	@Override
@@ -124,6 +136,7 @@ public class StorageBlock implements IStorageBlock {
 		
 		currentOffset.set(0);
 		dirtyStorage.set(0);
+		usedStorage.set(0);
 		
 		underlyingStorage.free();
 	}

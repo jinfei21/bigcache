@@ -35,6 +35,7 @@ public class StorageBlockTest {
 		assertTrue(block.getDirtyRatio() <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == block.getUsed());
 		
 		// retrieve
 		byte[] resultBytes = block.retrieve(pointer);
@@ -43,6 +44,7 @@ public class StorageBlockTest {
 		assertTrue(block.getDirtyRatio() <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == block.getUsed());
 		
 		// update to small
 		String smallTestString = "Test Str";
@@ -53,6 +55,7 @@ public class StorageBlockTest {
 		assertTrue(Math.abs(expectedRatio - block.getDirtyRatio()) <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(smallTestBytes.length == pointer.getLength());
+		assertTrue(smallTestBytes.length == block.getUsed());
 		
 		// update to bigger
 		pointer = block.update(pointer, testBytes);
@@ -61,12 +64,14 @@ public class StorageBlockTest {
 		assertTrue(Math.abs(expectedRatio - block.getDirtyRatio()) <= 1e-6);
 		assertTrue(testBytes.length == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == block.getUsed());
 		
 		// remove
 		resultBytes = block.remove(pointer);
 		assertEquals(testString, new String(resultBytes));
 		expectedRatio = testBytes.length * 2 * 1.0 / StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 		assertTrue(Math.abs(expectedRatio - block.getDirtyRatio()) <= 1e-6);
+		assertTrue(0L == block.getUsed());
 		
 		// free
 		block.free();
@@ -99,6 +104,7 @@ public class StorageBlockTest {
 			assertTrue(block.getDirtyRatio() <= 1e-6);
 			assertTrue(i * (testBytes.length) == pointer.getPosition());
 			assertTrue(testBytes.length == pointer.getLength());
+			assertTrue(testBytes.length * (i + 1) == block.getUsed());
 		}
 		
 		// retrieve
@@ -109,6 +115,7 @@ public class StorageBlockTest {
 			assertTrue(block.getDirtyRatio() <= 1e-6);
 			assertTrue(i * (testBytes.length) == pointers[i].getPosition());
 			assertTrue(testBytes.length == pointers[i].getLength());
+			assertTrue(testBytes.length * limit == block.getUsed());
 		}
 		
 		// update to small
@@ -121,6 +128,7 @@ public class StorageBlockTest {
 			assertTrue(Math.abs(expectedRatio - block.getDirtyRatio()) <= 1e-6);
 			assertTrue(i * (testBytes.length) == pointers[i].getPosition());
 			assertTrue(smallTestBytes.length == pointers[i].getLength());
+			assertTrue(testBytes.length * limit - (testBytes.length - smallTestBytes.length) * (i + 1) == block.getUsed());
 		}
 		
 		// update to bigger
@@ -132,6 +140,7 @@ public class StorageBlockTest {
 			assertTrue((limit + i) * testBytes.length == pointers[i].getPosition());
 			assertTrue(testBytes.length == pointers[i].getLength());
 		}
+		assertTrue(testBytes.length * limit == block.getUsed());
 		
 		// remove
 		for(int i = 0; i < limit; i++) {
@@ -140,6 +149,7 @@ public class StorageBlockTest {
 			double expectedRatio = (testBytes.length * limit + testBytes.length * (i + 1)) * 1.0 / StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 			assertTrue(Math.abs(expectedRatio - block.getDirtyRatio()) <= 1e-6);
 		}
+		assertTrue(0L == block.getUsed());
 		
 		// free
 		block.free();
@@ -161,6 +171,7 @@ public class StorageBlockTest {
 			assertTrue(i * 1024 == pointer.getPosition());
 			assertTrue(1024 == pointer.getLength());
 		}
+		assertTrue(1024 * 1024 == block.getUsed());
 		
 		Pointer pointer = block.store(sourceBytes);
 		assertNull(pointer); // overflow
@@ -179,14 +190,17 @@ public class StorageBlockTest {
 			assertTrue(i * 1024 == pointer.getPosition());
 			assertTrue(1024 == pointer.getLength());
 		}
+		assertTrue(1024 * 1024 == block.getUsed());
 		
 		pointer = block.update(pointer, new byte[512]);
 		assertTrue(1023 * 1024 == pointer.getPosition());
 		assertTrue(512 == pointer.getLength());
+		assertTrue(1024 * 1024 - 512 == block.getUsed());
 		
 		pointer = block.update(pointer, new byte[512]);
 		assertTrue(1023 * 1024 == pointer.getPosition());
 		assertTrue(512 == pointer.getLength());
+		assertTrue(1024 * 1024 - 512 == block.getUsed());
 		
 		pointer = block.update(pointer, new byte[513]);
 		assertNull(pointer); // overflow

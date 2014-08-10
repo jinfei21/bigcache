@@ -27,6 +27,7 @@ public class StorageManagerTest {
 		assertTrue(1024 * 1024 * 2 == storageManager.getCapacity());
 		assertTrue(0 == storageManager.getDirty());
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
+		assertTrue(0L == storageManager.getUsed());
 		
 		String testString = "Test String";
 		byte[] testBytes = testString.getBytes();
@@ -37,6 +38,7 @@ public class StorageManagerTest {
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == storageManager.getUsed());
 		
 		// retrieve
 		byte[] resultBytes = storageManager.retrieve(pointer);
@@ -45,6 +47,7 @@ public class StorageManagerTest {
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == storageManager.getUsed());
 		
 		// update to small
 		String smallTestString = "Test Str";
@@ -55,6 +58,7 @@ public class StorageManagerTest {
 		assertTrue(Math.abs(expectedRatio - storageManager.getDirtyRatio()) <= 1e-6);
 		assertTrue(0 == pointer.getPosition());
 		assertTrue(smallTestBytes.length == pointer.getLength());
+		assertTrue(smallTestBytes.length == storageManager.getUsed());
 		
 		// update to bigger
 		pointer = storageManager.update(pointer, testBytes);
@@ -63,12 +67,14 @@ public class StorageManagerTest {
 		assertTrue(Math.abs(expectedRatio - storageManager.getDirtyRatio()) <= 1e-6);
 		assertTrue(testBytes.length == pointer.getPosition());
 		assertTrue(testBytes.length == pointer.getLength());
+		assertTrue(testBytes.length == storageManager.getUsed());
 		
 		// remove
 		resultBytes = storageManager.remove(pointer);
 		assertEquals(testString, new String(resultBytes));
 		expectedRatio = testBytes.length * 2 * 1.0 / storageManager.getCapacity();
 		assertTrue(Math.abs(expectedRatio - storageManager.getDirtyRatio()) <= 1e-6);
+		assertTrue(0L == storageManager.getUsed());
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -96,6 +102,7 @@ public class StorageManagerTest {
 		assertTrue(1024 * 1024 * 2 == storageManager.getCapacity());
 		assertTrue(0 == storageManager.getDirty());
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
+		assertTrue(0L == storageManager.getUsed());
 		
 		String testString = "Test String";
 		byte[] testBytes = testString.getBytes();
@@ -112,6 +119,7 @@ public class StorageManagerTest {
 			assertTrue(i * (testBytes.length) == pointer.getPosition());
 			assertTrue(testBytes.length == pointer.getLength());
 		}
+		assertTrue(1000 * testBytes.length == storageManager.getUsed());
 		
 		// retrieve
 		for(int i = 0; i < limit; i++) {
@@ -122,6 +130,7 @@ public class StorageManagerTest {
 			assertTrue(i * (testBytes.length) == pointers[i].getPosition());
 			assertTrue(testBytes.length == pointers[i].getLength());
 		}
+		assertTrue(1000 * testBytes.length == storageManager.getUsed());
 		
 		// update to small
 		String smallTestString = "Test Str";
@@ -134,6 +143,7 @@ public class StorageManagerTest {
 			assertTrue(i * (testBytes.length) == pointers[i].getPosition());
 			assertTrue(smallTestBytes.length == pointers[i].getLength());
 		}
+		assertTrue(1000 * smallTestBytes.length == storageManager.getUsed());
 		
 		// update to bigger
 		for(int i = 0; i < limit; i++) {
@@ -144,6 +154,7 @@ public class StorageManagerTest {
 			assertTrue((limit + i) * testBytes.length == pointers[i].getPosition());
 			assertTrue(testBytes.length == pointers[i].getLength());
 		}
+		assertTrue(1000 * testBytes.length == storageManager.getUsed());
 		
 		// remove
 		for(int i = 0; i < limit; i++) {
@@ -152,6 +163,7 @@ public class StorageManagerTest {
 			double expectedRatio = (testBytes.length * limit + testBytes.length * (i + 1)) * 1.0 / storageManager.getCapacity();
 			assertTrue(Math.abs(expectedRatio - storageManager.getDirtyRatio()) <= 1e-6);
 		}
+		assertTrue(0L == storageManager.getUsed());
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -194,6 +206,7 @@ public class StorageManagerTest {
 				previousBlock = pointer.getStorageBlock();
 			}
 		}
+		assertTrue(1024 * 1024 == storageManager.getUsed());
 		
 		Pointer pointer = storageManager.store(sourceBytes); // switch active block
 		assertTrue(previousBlock != pointer.getStorageBlock());
@@ -204,6 +217,7 @@ public class StorageManagerTest {
 		assertTrue(1024 * 1024 * 2 == storageManager.getCapacity());
 		assertTrue(0 == storageManager.getDirty());
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
+		assertTrue(1025 * 1024 == storageManager.getUsed());
 		
 		for(int i = 1; i < 1024; i++) {
 			pointer = storageManager.store(sourceBytes);
@@ -214,6 +228,7 @@ public class StorageManagerTest {
 				previousBlock = pointer.getStorageBlock();
 			}
 		}
+		assertTrue(2048 * 1024 == storageManager.getUsed());
 		
 		pointer = storageManager.store(sourceBytes); //switch active block
 		assertTrue(previousBlock != pointer.getStorageBlock());
@@ -224,6 +239,7 @@ public class StorageManagerTest {
 		assertTrue(1024 * 1024 * 3 == storageManager.getCapacity());
 		assertTrue(0 == storageManager.getDirty());
 		assertTrue(storageManager.getDirtyRatio() <= 1e-6);
+		assertTrue(2049 * 1024 == storageManager.getUsed());
 	}
 	
 	@SuppressWarnings("resource")
@@ -250,9 +266,11 @@ public class StorageManagerTest {
 				previousBlock = pointer.getStorageBlock();
 			}
 		}
+		assertTrue(1024 * 1024 == storageManager.getUsed());
 		
 		pointer = storageManager.update(pointer, new byte[512]);
 		assertTrue(previousBlock == pointer.getStorageBlock()); // no switch
+		assertTrue(1023 * 1024 + 512 == storageManager.getUsed());
 		
 		pointer = storageManager.update(pointer, new byte[1024]);
 		assertTrue(previousBlock != pointer.getStorageBlock()); // switch
@@ -264,6 +282,7 @@ public class StorageManagerTest {
 		assertTrue(1024 == storageManager.getDirty());
 		double expectedRatio = 1024 * 1.0 / storageManager.getCapacity();
 		assertTrue(Math.abs(expectedRatio - storageManager.getDirtyRatio()) <= 1e-6);
+		assertTrue(1024 * 1024 == storageManager.getUsed());
 		
 		for(int i = 1; i < 1024; i++) {
 			pointer = storageManager.store(sourceBytes);
@@ -274,13 +293,16 @@ public class StorageManagerTest {
 				previousBlock = pointer.getStorageBlock();
 			}
 		}
+		assertTrue(2047 * 1024 == storageManager.getUsed());
 		
 		pointer = storageManager.update(pointer, new byte[512]);
 		assertTrue(previousBlock == pointer.getStorageBlock()); // no switch
+		assertTrue(2047 * 1024 - 512 == storageManager.getUsed());
 		
 		pointer = storageManager.update(pointer, new byte[1024]);
 		assertTrue(previousBlock != pointer.getStorageBlock()); // switch
 		previousBlock = pointer.getStorageBlock();
+		assertTrue(2047 * 1024 == storageManager.getUsed());
 		
 		assertTrue(3 == storageManager.getTotalBlockCount());
 		assertTrue(0 == storageManager.getFreeBlockCount());

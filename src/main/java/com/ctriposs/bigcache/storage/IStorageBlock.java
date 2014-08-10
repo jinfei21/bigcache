@@ -55,6 +55,13 @@ public interface IStorageBlock extends Comparable<IStorageBlock>, Closeable {
 	long getDirty();
 	
 	/**
+	 * Calculates and returns total size of the used space.
+	 * 
+	 * @return the total size of the used space.
+	 */
+	long getUsed();
+	
+	/**
 	 * Calculates and returns total capacity of the block.
 	 *
 	 * @return the total capacity of the block.
@@ -64,7 +71,7 @@ public interface IStorageBlock extends Comparable<IStorageBlock>, Closeable {
 	/**
 	 * Calculates and returns the dirty to capacity ratio
 	 *  
-	 * @return dirty ration
+	 * @return dirty ratio
 	 */
 	double getDirtyRatio();
 	

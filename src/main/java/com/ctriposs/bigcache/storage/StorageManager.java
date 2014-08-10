@@ -161,6 +161,16 @@ public class StorageManager implements IStorageBlock {
 	public double getDirtyRatio() {
 		return (this.getDirty() * 1.0) / this.getCapacity();
 	}
+	
+
+	@Override
+	public long getUsed() {
+		long usedStorage = 0;
+		for(IStorageBlock block : usedBlocks) {
+			usedStorage += block.getUsed();
+		}
+		return usedStorage;
+	}
 
 	@Override
 	public void free() {
