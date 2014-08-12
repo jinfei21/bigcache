@@ -7,6 +7,7 @@ public class CacheConfig {
 	private int concurrencyLevel = BigCache.DEFAULT_CONCURRENCY_LEVEL;
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
+    private long purgeInterval = BigCache.DEFAULT_PURGE_INTERVAL;
 	
 	public int getConcurrencyLevel() {
 		return concurrencyLevel;
@@ -47,4 +48,13 @@ public class CacheConfig {
 		this.initialNumberOfBlocks = initialNumberOfBlocks;
 		return this;
 	}
+
+    public long getPurgeInterval() {
+        return purgeInterval;
+    }
+
+    public CacheConfig setPurgeInterval(long purgeInterval) {
+        this.purgeInterval = purgeInterval;
+        return this;
+    }
 }

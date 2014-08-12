@@ -11,7 +11,8 @@ public class Pointer {
 	protected int position;
 	
 	/** The access time in milliseconds. */
-	protected long lastAccessTime;
+    // changed by multiple read thread, need to be volatile
+	protected volatile long lastAccessTime;
 	
 	/** The length of the value. */
 	protected int length;

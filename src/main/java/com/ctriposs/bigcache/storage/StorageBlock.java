@@ -42,11 +42,17 @@ public class StorageBlock implements IStorageBlock {
 	
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
-		byte [] payload = new byte[pointer.getLength()];
-		underlyingStorage.get(pointer.getPosition(), payload);
-		pointer.setLastAccessTime(System.currentTimeMillis());
-		return payload;
+        return retrieve(pointer, true);
 	}
+
+    @Override
+    public byte[] retrieve(Pointer pointer, boolean updateAccessTime) throws IOException {
+        byte [] payload = new byte[pointer.getLength()];
+        underlyingStorage.get(pointer.getPosition(), payload);
+        if (updateAccessTime)
+            pointer.setLastAccessTime(System.currentTimeMillis());
+        return payload;
+    }
 	
 
 	@Override

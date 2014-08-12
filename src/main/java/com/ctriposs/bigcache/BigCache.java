@@ -2,12 +2,14 @@ package com.ctriposs.bigcache;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.lang.ref.WeakReference;
+import java.util.Set;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.ctriposs.bigcache.lock.StripedReadWriteLock;
 import com.ctriposs.bigcache.storage.Pointer;
+import com.ctriposs.bigcache.storage.StorageBlock;
 import com.ctriposs.bigcache.storage.StorageManager;
 import com.ctriposs.bigcache.utils.FileUtil;
 
@@ -22,7 +24,7 @@ import com.ctriposs.bigcache.utils.FileUtil;
  * @param <K> the key type
  */
 public class BigCache<K> implements ICache<K> {
-	
+
 	/** The Constant DELTA. */
 	//private static final float DELTA = 0.00001f;
 	
@@ -45,13 +47,13 @@ public class BigCache<K> implements ICache<K> {
 	protected AtomicLong miss = new AtomicLong();
 
 	/** The pointer map. */
-	protected ConcurrentMap<K, Pointer> pointerMap = new ConcurrentHashMap<K, Pointer>();
+	protected final ConcurrentMap<K, Pointer> pointerMap = new ConcurrentHashMap<K, Pointer>();
 
 	/** Managing the storages. */
-	private StorageManager storageManager;
+	/* package for ut */ final StorageManager storageManager;
 
 	/** The read write lock. */
-	private StripedReadWriteLock readWriteLock;
+	private final StripedReadWriteLock readWriteLock;
 
 	/** The Constant NO_OF_CLEANINGS. */
 	//private static final AtomicInteger NO_OF_CLEANINGS = new AtomicInteger();
@@ -61,7 +63,10 @@ public class BigCache<K> implements ICache<K> {
 	
 	/** The directory to store cached data */
 	private String cacheDir;
-	
+
+    /** The thread pool which is used to clean the cache */
+    private ScheduledExecutorService ses;
+
 	public BigCache(String dir, CacheConfig config) throws IOException {
 		this.cacheDir = dir;
 		if (!this.cacheDir.endsWith(File.separator)) {
@@ -77,6 +82,9 @@ public class BigCache<K> implements ICache<K> {
 		
 		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(), config.getInitialNumberOfBlocks());
 		this.readWriteLock = new StripedReadWriteLock(config.getConcurrencyLevel());
+
+        ses = new ScheduledThreadPoolExecutor(1);
+        ses.scheduleWithFixedDelay(new CacheCleaner(this), config.getPurgeInterval(), config.getPurgeInterval(), TimeUnit.MILLISECONDS);
 	}
 	
 
@@ -107,6 +115,10 @@ public class BigCache<K> implements ICache<K> {
 		readLock(key);
 		try {
 			Pointer pointer = pointerMap.get(key);
+            if (pointer != null && pointer.isExpired()) {
+                // expired, set the pointer to null as if we don't find it. This entry will be purged later
+                pointer = null;
+            }
 			if (pointer != null) {
 				hit.incrementAndGet();
 				return storageManager.retrieve(pointer);
@@ -192,4 +204,104 @@ public class BigCache<K> implements ICache<K> {
 		this.storageManager.close();
 	}
 
+    static class CacheCleaner<K> implements Runnable {
+        private WeakReference<BigCache> cacheHolder;
+        private ScheduledExecutorService ses;
+
+        CacheCleaner(BigCache<K> cache) {
+            ses = cache.ses;
+            this.cacheHolder = new WeakReference<BigCache>(cache);
+        }
+
+        @Override
+        public void run() {
+           BigCache cache = cacheHolder.get();
+            if (cache == null) {
+                // cache is recycled,
+                if (ses != null) {
+                    ses.shutdown();
+                    ses = null;
+                }
+                return;
+            }
+            try {
+                clean(cache);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            cache.storageManager.clean();
+        }
+
+        public void clean(BigCache cache) throws IOException {
+            Set<K> keys = cache.pointerMap.keySet();
+
+            for(K key : keys) {
+                boolean expired = false;
+
+                // 1. check with read lock
+                cache.readLock(key);
+                /**
+                 * readLock is only used in "get" operation besides the clean thread. It's safe to modify
+                 * the value of "pointer" here, as:
+                 * a. the "get" thread will only change the access time and do no other modifications; and access
+                 * time only affects expiration.
+                 * b. there will be only one clean method, so it can do modifications to the storage of "pointer"(but it
+                 * can't change the pointer reference)
+                 */
+                try {
+                    Pointer pointer = (Pointer)cache.pointerMap.get(key);
+                    if (pointer == null) {
+                        // not exist now and do nothing, continue with next key;
+                        continue;
+                    }
+
+                    expired = pointer.isExpired();
+                    if (expired) {
+                        // purge later with write lock
+                    } else {
+                        // check if the storage block has already been dirty
+                        StorageBlock sb = pointer.getStorageBlock();
+                        if (sb.getDirtyRatio() > 0.5) {
+                            // the pointer is locked, and the current thread is the only one can affect the storage.
+                            byte[] payload = cache.storageManager.retrieve(pointer, false);
+                            cache.storageManager.remove(pointer);
+                            Pointer newPointer = cache.storageManager.storeExcluding(payload, sb);
+
+                            // the pointer object may be shared now, so we just modify its state.
+                            // access time is volatile and we should use the old value.
+                            long accesstime = pointer.getLastAccessTime();
+                            pointer.copy(newPointer);
+                            pointer.setLastAccessTime(accesstime);
+                        }
+                    }
+                } finally {
+                    cache.readUnlock(key);
+                }
+
+                // 2. expire with write lock internally if needed
+                if (expired) {
+                    cache.writeLock(key);
+                    // the only thread with write key
+                    try {
+                        Pointer pointer = (Pointer)cache.pointerMap.get(key);
+                        if (pointer == null) {
+                            // already purged by others
+                            ses.shutdown();
+                            break;
+                        }
+
+                        if (pointer.isExpired()) {
+                            cache.storageManager.remove(pointer);
+                            cache.pointerMap.remove(key);
+                        } else {
+                            // may be refreshed by other threads
+                        }
+                    }finally {
+                        cache.writeUnlock(key);
+                    }
+                }
+            }
+        }
+    }
 }

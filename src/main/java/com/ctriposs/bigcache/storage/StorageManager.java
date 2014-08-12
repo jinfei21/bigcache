@@ -1,10 +1,8 @@
 package com.ctriposs.bigcache.storage;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,32 +16,32 @@ import java.util.concurrent.locks.ReentrantLock;
 public class StorageManager implements IStorageBlock {
 	
 	/** keep track of the number of blocks allocated */
-	private AtomicInteger blockCount = new AtomicInteger(0);
+	private final AtomicInteger blockCount = new AtomicInteger(0);
 	
 	/**
 	 * Directory for cache data store
 	 */
-	private String dir;
+	private final String dir;
 	
 	/**
 	 * The capacity per block
 	 * 
 	 */
-	private int capacityPerBlock;
+	private final int capacityPerBlock;
 	
 	
 	/** The active storage block change lock. */
-	private Lock activeBlockChangeLock = new ReentrantLock();
+	private final Lock activeBlockChangeLock = new ReentrantLock();
 
 	/**
 	 *  A list of used storage blocks
 	 */
-	private List<IStorageBlock> usedBlocks = new ArrayList<IStorageBlock>();
+	private final Queue<IStorageBlock> usedBlocks = new ConcurrentLinkedQueue<IStorageBlock>();
 	
 	/**
 	 *  A queue of free storage blocks
 	 */
-	private Queue<IStorageBlock> freeBlocks = new LinkedList<IStorageBlock>();
+	private final Queue<IStorageBlock> freeBlocks = new LinkedList<IStorageBlock>();
 	
 	/**
 	 * Current active block for appending new cache data
@@ -63,19 +61,24 @@ public class StorageManager implements IStorageBlock {
 			IStorageBlock storageBlock = new StorageBlock(dir, i, capacityPerBlock);
 			freeBlocks.offer(storageBlock);
 		}
-		this.dir = dir;
-		this.capacityPerBlock = capacityPerBlock;
 		this.blockCount.set(initialNumberOfBlocks);
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
+        this.capacityPerBlock = capacityPerBlock;
+        this.dir = dir;
 	}
+
+    @Override
+    public byte[] retrieve(Pointer pointer, boolean updateAccessTime) throws IOException {
+        return pointer.getStorageBlock().retrieve(pointer, updateAccessTime);
+    }
 
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
 		return pointer.getStorageBlock().retrieve(pointer);
 	}
 
-	@Override
+    @Override
 	public byte[] remove(Pointer pointer) throws IOException {
 		return pointer.getStorageBlock().remove(pointer);
 	}
@@ -114,7 +117,7 @@ public class StorageManager implements IStorageBlock {
 	 * @param exludingBlock the storage block to be excluded
 	 * @return the pointer
 	 */
-	protected Pointer storeExcluding(byte[] payload, StorageBlock exludingBlock) throws IOException {
+	public Pointer storeExcluding(byte[] payload, StorageBlock exludingBlock) throws IOException {
 		while (this.activeBlock == exludingBlock) {
 			activeBlockChangeLock.lock(); 
 			try {
@@ -182,6 +185,24 @@ public class StorageManager implements IStorageBlock {
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
 	}
+
+    // only run by one thread.
+    public void clean() {
+        Iterator<IStorageBlock> it = usedBlocks.iterator();
+        while(it.hasNext()) {
+            IStorageBlock storageBlock = it.next();
+            if (storageBlock == activeBlock) {
+                // let active block be cleaned in the next run
+                continue;
+            }
+
+            if (storageBlock.getUsed() == 0) {
+                // we will not allocating memory from it any more and it is used by nobody.
+                storageBlock.free();
+                it.remove();
+            }
+        }
+    }
 
 	@Override
 	public void close() throws IOException {
