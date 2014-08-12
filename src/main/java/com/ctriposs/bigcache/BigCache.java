@@ -203,6 +203,10 @@ public class BigCache<K> implements ICache<K> {
 	public void close() throws IOException {
 		this.storageManager.close();
 	}
+	
+	public long count(){
+		return pointerMap.size();
+	}
 
     static class CacheCleaner<K> implements Runnable {
         private WeakReference<BigCache> cacheHolder;

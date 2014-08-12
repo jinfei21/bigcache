@@ -7,9 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 public class FileChannelStorage implements IStorage {
-	
-	public static final String DATA_FILE_SUFFIX = ".data";
-	
+
 	private FileChannel fileChannel;
 	private RandomAccessFile raf;
 	

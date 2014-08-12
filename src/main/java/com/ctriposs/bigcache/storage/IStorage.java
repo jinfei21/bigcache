@@ -7,8 +7,9 @@ import java.io.IOException;
  * The Interface IStorage for get/put cached data in bytes.
  */
 public interface IStorage extends Closeable {
-	
-	
+
+	public static final String DATA_FILE_SUFFIX = ".data";
+
 	/**
 	 * Gets bytes from the specified location.
 	 *
