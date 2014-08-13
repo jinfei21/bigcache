@@ -9,22 +9,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class StorageBlock implements IStorageBlock {
 
 	/** The index. */
-	private int index;
+	private final int index;
 	
 	/** The capacity. */
-	private int capacity;
+	private final int capacity;
 	
 	/** The underlying storage. */
-	private IStorage underlyingStorage;
+	private final IStorage underlyingStorage;
 	
 	/** The offset within the storage block. */
-	private AtomicInteger currentOffset = new AtomicInteger(0);
+	private final AtomicInteger currentOffset = new AtomicInteger(0);
 	
 	/** The dirty storage. */
-	private AtomicInteger dirtyStorage = new AtomicInteger(0);
+	private final AtomicInteger dirtyStorage = new AtomicInteger(0);
 	
 	/** The used storage. */
-	private AtomicInteger usedStorage = new AtomicInteger(0);
+	private final AtomicInteger usedStorage = new AtomicInteger(0);
 	
 	/**
 	 * Instantiates a new storage block.
@@ -40,21 +40,13 @@ public class StorageBlock implements IStorageBlock {
 		underlyingStorage = new FileChannelStorage(dir, index, capacity);
 	}
 	
-	@Override
-	public byte[] retrieve(Pointer pointer) throws IOException {
-        return retrieve(pointer, true);
-	}
-
     @Override
-    public byte[] retrieve(Pointer pointer, boolean updateAccessTime) throws IOException {
+    public byte[] retrieve(Pointer pointer) throws IOException {
         byte [] payload = new byte[pointer.getLength()];
         underlyingStorage.get(pointer.getPosition(), payload);
-        if (updateAccessTime)
-            pointer.setLastAccessTime(System.currentTimeMillis());
         return payload;
     }
 	
-
 	@Override
 	public byte[] remove(Pointer pointer) throws IOException {
 		byte [] payload = retrieve(pointer);

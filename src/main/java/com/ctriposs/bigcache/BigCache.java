@@ -40,11 +40,20 @@ public class BigCache<K> implements ICache<K> {
 	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
 	public static final int DEFAULT_CONCURRENCY_LEVEL = 4;
 
+    /** The default threshold for dirty block recycling */
+    public static final double DEFAULT_DIRTY_RATIO_THRESHOLD = 0.5;
+
 	/** The hit. */
 	protected AtomicLong hit = new AtomicLong();
 
 	/** The miss. */
 	protected AtomicLong miss = new AtomicLong();
+
+    /** The # of purges due to expiration. */
+    protected AtomicLong purge = new AtomicLong();
+
+    /** The # of moves for dirty block recycle. */
+    protected AtomicLong move = new AtomicLong();
 
 	/** The pointer map. */
 	protected final ConcurrentMap<K, Pointer> pointerMap = new ConcurrentHashMap<K, Pointer>();
@@ -67,6 +76,9 @@ public class BigCache<K> implements ICache<K> {
     /** The thread pool which is used to clean the cache */
     private ScheduledExecutorService ses;
 
+    /** dirty ratio which controls block recycle */
+    private final double dirtyRatioThreshold;
+
 	public BigCache(String dir, CacheConfig config) throws IOException {
 		this.cacheDir = dir;
 		if (!this.cacheDir.endsWith(File.separator)) {
@@ -85,6 +97,7 @@ public class BigCache<K> implements ICache<K> {
 
         ses = new ScheduledThreadPoolExecutor(1);
         ses.scheduleWithFixedDelay(new CacheCleaner(this), config.getPurgeInterval(), config.getPurgeInterval(), TimeUnit.MILLISECONDS);
+        dirtyRatioThreshold = config.getDirtyRatioThreshold();
 	}
 	
 
@@ -104,6 +117,7 @@ public class BigCache<K> implements ICache<K> {
 				pointer = storageManager.update(pointer, value);
 			}
 			pointer.setTimeToIdle(tti);
+            pointer.setLastAccessTime(System.currentTimeMillis()); // actually redundant, just for clarity
 			pointerMap.put(key, pointer);
 		} finally {
 			writeUnlock(key);
@@ -121,6 +135,7 @@ public class BigCache<K> implements ICache<K> {
             }
 			if (pointer != null) {
 				hit.incrementAndGet();
+                pointer.setLastAccessTime(System.currentTimeMillis());
 				return storageManager.retrieve(pointer);
 			} else {
 				miss.incrementAndGet();
@@ -152,16 +167,37 @@ public class BigCache<K> implements ICache<K> {
 		return pointerMap.containsKey(key);
 	}
 
+    /**
+     * Clear the cache and the underlying storage.
+     *
+     * Don't do any operation else before clean has finished.
+     */
 	@Override
 	public void clear() {
-		this.pointerMap.clear();
 		this.storageManager.free();
+        /**
+         * we free storage first, so we can guarantee:
+         * 1. entries created/updated before "pointMap" clear process will not be seen. That's what free means.
+         * 2. entries created/updated after "pointMap" clear will be safe, as no free operation happens later
+         *
+         * There is only a small window of inconsistent state between the two free operation, and users should
+         * not see this if they behave right.
+         */
+        this.pointerMap.clear();
 	}
 
 	@Override
 	public double hitRatio() {
-		return hit.get() / (hit.get() + miss.get());
+		return 1.0 * hit.get() / (hit.get() + miss.get());
 	}
+
+    public long getPurgeCount() {
+        return purge.get();
+    }
+
+    public long getMoveCount() {
+        return move.get();
+    }
 	
 	/**
 	 * Read Lock for key is locked.
@@ -201,6 +237,8 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public void close() throws IOException {
+        this.clear();
+        this.ses.shutdownNow();
 		this.storageManager.close();
 	}
 	
@@ -221,9 +259,9 @@ public class BigCache<K> implements ICache<K> {
         public void run() {
            BigCache cache = cacheHolder.get();
             if (cache == null) {
-                // cache is recycled,
+                // cache is recycled abnormally
                 if (ses != null) {
-                    ses.shutdown();
+                    ses.shutdownNow();
                     ses = null;
                 }
                 return;
@@ -241,6 +279,11 @@ public class BigCache<K> implements ICache<K> {
             Set<K> keys = cache.pointerMap.keySet();
 
             for(K key : keys) {
+                if (Thread.currentThread().isInterrupted()) {
+                    // stopped by others
+                    return;
+                }
+
                 boolean expired = false;
 
                 // 1. check with read lock
@@ -266,10 +309,9 @@ public class BigCache<K> implements ICache<K> {
                     } else {
                         // check if the storage block has already been dirty
                         StorageBlock sb = pointer.getStorageBlock();
-                        if (sb.getDirtyRatio() > 0.5) {
+                        if (sb.getDirtyRatio() > cache.dirtyRatioThreshold) {
                             // the pointer is locked, and the current thread is the only one can affect the storage.
-                            byte[] payload = cache.storageManager.retrieve(pointer, false);
-                            cache.storageManager.remove(pointer);
+                            byte[] payload = cache.storageManager.remove(pointer);
                             Pointer newPointer = cache.storageManager.storeExcluding(payload, sb);
 
                             // the pointer object may be shared now, so we just modify its state.
@@ -277,6 +319,7 @@ public class BigCache<K> implements ICache<K> {
                             long accesstime = pointer.getLastAccessTime();
                             pointer.copy(newPointer);
                             pointer.setLastAccessTime(accesstime);
+                            cache.move.incrementAndGet();
                         }
                     }
                 } finally {
@@ -291,13 +334,13 @@ public class BigCache<K> implements ICache<K> {
                         Pointer pointer = (Pointer)cache.pointerMap.get(key);
                         if (pointer == null) {
                             // already purged by others
-                            ses.shutdown();
-                            break;
+                            continue;
                         }
 
                         if (pointer.isExpired()) {
                             cache.storageManager.remove(pointer);
                             cache.pointerMap.remove(key);
+                            cache.purge.incrementAndGet();
                         } else {
                             // may be refreshed by other threads
                         }

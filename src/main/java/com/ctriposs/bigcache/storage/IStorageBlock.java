@@ -10,15 +10,6 @@ import java.io.IOException;
  */
 public interface IStorageBlock extends Comparable<IStorageBlock>, Closeable {
 	
-	/**
-	 * Retrieves the payload associated with the pointer and update the access time if needed.
-	 *
-	 * @param pointer the pointer
-	 * @return the byte[]
-	 * @throws IOException
-	 */
-	byte[] retrieve(Pointer pointer, boolean updateAccessTime) throws IOException;
-
     /**
      * Retrieves the payload associated with the pointer and always update the access time.
      *

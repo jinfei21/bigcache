@@ -3,6 +3,7 @@ package com.ctriposs.bigcache.storage;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -39,9 +40,9 @@ public class StorageManager implements IStorageBlock {
 	private final Queue<IStorageBlock> usedBlocks = new ConcurrentLinkedQueue<IStorageBlock>();
 	
 	/**
-	 *  A queue of free storage blocks
+	 *  A queue of free storage blocks which is a priority queue and always return the block with smallest index.
 	 */
-	private final Queue<IStorageBlock> freeBlocks = new LinkedList<IStorageBlock>();
+	private final Queue<IStorageBlock> freeBlocks = new PriorityBlockingQueue<IStorageBlock>();
 	
 	/**
 	 * Current active block for appending new cache data
@@ -52,7 +53,7 @@ public class StorageManager implements IStorageBlock {
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
 	public final static int DEFAULT_CAPACITY_PER_BLOCK = 128 * 1024 * 1024; // 128M
-	
+
 	/** The Constant DEFAULT_INITIAL_NUMBER_OF_BLOCKS. */
 	public final static int DEFAULT_INITIAL_NUMBER_OF_BLOCKS = 8; // 1GB total
 	
@@ -67,11 +68,6 @@ public class StorageManager implements IStorageBlock {
         this.capacityPerBlock = capacityPerBlock;
         this.dir = dir;
 	}
-
-    @Override
-    public byte[] retrieve(Pointer pointer, boolean updateAccessTime) throws IOException {
-        return pointer.getStorageBlock().retrieve(pointer, updateAccessTime);
-    }
 
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
@@ -177,6 +173,7 @@ public class StorageManager implements IStorageBlock {
 
 	@Override
 	public void free() {
+        // safe?
 		for(IStorageBlock storageBlock : usedBlocks) {
 			storageBlock.free();
 			this.freeBlocks.offer(storageBlock);
@@ -199,6 +196,7 @@ public class StorageManager implements IStorageBlock {
             if (storageBlock.getUsed() == 0) {
                 // we will not allocating memory from it any more and it is used by nobody.
                 storageBlock.free();
+                freeBlocks.add(storageBlock);
                 it.remove();
             }
         }
@@ -209,9 +207,11 @@ public class StorageManager implements IStorageBlock {
 		for(IStorageBlock usedBlock : usedBlocks) {
 			usedBlock.close();
 		}
+        usedBlocks.clear();
 		for(IStorageBlock freeBlock : freeBlocks) {
 			freeBlock.close();
 		}
+        freeBlocks.clear();
 	}
 
 	@Override

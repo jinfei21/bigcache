@@ -8,7 +8,8 @@ public class CacheConfig {
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
     private long purgeInterval = BigCache.DEFAULT_PURGE_INTERVAL;
-	
+    private double dirtyRatioThreshold = BigCache.DEFAULT_DIRTY_RATIO_THRESHOLD;
+
 	public int getConcurrencyLevel() {
 		return concurrencyLevel;
 	}
@@ -55,6 +56,15 @@ public class CacheConfig {
 
     public CacheConfig setPurgeInterval(long purgeInterval) {
         this.purgeInterval = purgeInterval;
+        return this;
+    }
+
+    public double getDirtyRatioThreshold() {
+        return dirtyRatioThreshold;
+    }
+
+    public CacheConfig setDirtyRatioLimit(double dirtyRatioThreshold) {
+        this.dirtyRatioThreshold = dirtyRatioThreshold;
         return this;
     }
 }
