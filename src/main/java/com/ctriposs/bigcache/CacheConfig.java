@@ -8,6 +8,8 @@ public class CacheConfig {
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
     private long purgeInterval = BigCache.DEFAULT_PURGE_INTERVAL;
+    private long maxMemoryStorageSize = StorageManager.DEFAULT_MEMORY_SIZE;
+    private StorageMode storageMode = StorageMode.File;
 	
 	public int getConcurrencyLevel() {
 		return concurrencyLevel;
@@ -57,4 +59,32 @@ public class CacheConfig {
         this.purgeInterval = purgeInterval;
         return this;
     }
+
+	public StorageMode getStorageMode() {
+		return storageMode;
+	}
+
+	public CacheConfig setStorageMode(StorageMode storageMode) {
+		this.storageMode = storageMode;
+		return this;
+	}
+
+	public CacheConfig setStorageMode(StorageMode storageMode, long maxMemoryStorageSize) {
+		if (maxMemoryStorageSize < 0 || maxMemoryStorageSize > 10 * 1000 * 1024 * 1024) {
+			throw new IllegalArgumentException("maxMemoryStorageSize must be larger than 0 and smaller than 10GB!");
+		}
+		this.storageMode = storageMode;
+		this.maxMemoryStorageSize = maxMemoryStorageSize;
+		return this;
+	}
+
+	public long getMaxMemoryStorageSize() {
+		return maxMemoryStorageSize;
+	}
+
+	public enum StorageMode {
+		File,
+		MemoryMappedWithFile,
+		OffHeapWithFile,
+	}
 }

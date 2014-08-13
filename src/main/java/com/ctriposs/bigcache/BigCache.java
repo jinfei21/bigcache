@@ -80,7 +80,8 @@ public class BigCache<K> implements ICache<K> {
 		// clean up old cache data if exists
 		FileUtil.deleteDirectory(new File(this.cacheDir));
 		
-		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(), config.getInitialNumberOfBlocks());
+		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(),
+				config.getInitialNumberOfBlocks(), config.getStorageMode(), config.getMaxMemoryStorageSize());
 		this.readWriteLock = new StripedReadWriteLock(config.getConcurrencyLevel());
 
         ses = new ScheduledThreadPoolExecutor(1);

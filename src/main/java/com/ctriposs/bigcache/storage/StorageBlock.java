@@ -3,6 +3,8 @@ package com.ctriposs.bigcache.storage;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
+
 /**
  * The Class StorageBlock.
  */
@@ -34,10 +36,20 @@ public class StorageBlock implements IStorageBlock {
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
 	 */
-	public StorageBlock(String dir, int index, int capacity) throws IOException{
+	public StorageBlock(String dir, int index, int capacity, StorageMode storageMode) throws IOException{
 		this.index = index;
 		this.capacity = capacity;
-		underlyingStorage = new FileChannelStorage(dir, index, capacity);
+		switch (storageMode) {
+		case File:
+			underlyingStorage = new FileChannelStorage(dir, index, capacity);
+			break;
+		case MemoryMappedWithFile:
+			underlyingStorage = new MemoryMappedStorage(dir, index, capacity);
+			break;
+		case OffHeapWithFile:
+			underlyingStorage = new OffHeapStorage(capacity);
+			break;
+		}
 	}
 	
 	@Override

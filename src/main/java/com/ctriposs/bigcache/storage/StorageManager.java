@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 
 /**
  * Managing a list of used/free storage blocks for cache operations like get/put/delete
@@ -47,7 +50,23 @@ public class StorageManager implements IStorageBlock {
 	 * Current active block for appending new cache data
 	 */
 	private volatile IStorageBlock activeBlock;
+
+	/**
+	 * Main storage mode
+	 */
+	private final StorageMode storageMode;
+
+	/**
+	 * Max memory storage size.
+	 * This parameter is particularly used when storageMode is equal to StorageMode.MemoryMappedFile or StorageMode.OffHeapFile.
+	 */
+	private final long maxMemoryStorageSize;
 	
+	/**
+	 * The number of memory blocks can be created.
+	 */
+	private final AtomicLong newMemoryBlockCount;
+
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
@@ -55,17 +74,37 @@ public class StorageManager implements IStorageBlock {
 	
 	/** The Constant DEFAULT_INITIAL_NUMBER_OF_BLOCKS. */
 	public final static int DEFAULT_INITIAL_NUMBER_OF_BLOCKS = 8; // 1GB total
+
+	/**
+	 * The Constant DEFAULT_MEMORY_SIZE.
+	 */
+	public static final int DEFAULT_MEMORY_SIZE = 2 * 1000 * 1024 * 1024; //2GB
 	
-	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks) throws IOException {
-		for(int i = 0; i < initialNumberOfBlocks; i++) {
-			IStorageBlock storageBlock = new StorageBlock(dir, i, capacityPerBlock);
+	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
+			long maxMemoryStorageSize) throws IOException {
+		if (storageMode == StorageMode.File) {
+			this.newMemoryBlockCount = new AtomicLong(0);
+		} else {
+			this.newMemoryBlockCount = new AtomicLong(maxMemoryStorageSize / capacityPerBlock);
+		}
+
+		for (int i = 0; i < initialNumberOfBlocks; i++) {
+			IStorageBlock storageBlock;
+			if (this.newMemoryBlockCount.get() > 0) {
+				storageBlock = new StorageBlock(dir, i, capacityPerBlock, storageMode);
+			} else {
+				storageBlock = new StorageBlock(dir, i, capacityPerBlock, StorageMode.File);
+			}
 			freeBlocks.offer(storageBlock);
 		}
+
 		this.blockCount.set(initialNumberOfBlocks);
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
-        this.capacityPerBlock = capacityPerBlock;
-        this.dir = dir;
+		this.capacityPerBlock = capacityPerBlock;
+		this.dir = dir;
+		this.storageMode = storageMode;
+		this.maxMemoryStorageSize = maxMemoryStorageSize;
 	}
 
     @Override
@@ -96,7 +135,7 @@ public class StorageManager implements IStorageBlock {
 				else { // still overflow
 					IStorageBlock freeBlock = this.freeBlocks.poll();
 					if (freeBlock == null) { // create a new one
-						freeBlock = new StorageBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+						freeBlock = this.newBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
 					}
 					pointer = freeBlock.store(payload);
 					this.activeBlock = freeBlock;
@@ -125,7 +164,7 @@ public class StorageManager implements IStorageBlock {
 				if (this.activeBlock != exludingBlock) break;
 				IStorageBlock freeBlock = this.freeBlocks.poll();
 				if (freeBlock == null) {
-					freeBlock = new StorageBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+					freeBlock = this.newBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
 				}
 				this.activeBlock = freeBlock;
 				this.usedBlocks.add(this.activeBlock);
@@ -184,6 +223,14 @@ public class StorageManager implements IStorageBlock {
 		usedBlocks.clear();
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
+	}
+
+	private IStorageBlock newBlock(String dir, int index, int capacity) throws IOException {
+		if (this.newMemoryBlockCount.get() > 0) {
+			return new StorageBlock(dir, index, capacity, this.storageMode);
+		} else {
+			return new StorageBlock(dir, index, capacity, StorageMode.File);
+		}
 	}
 
     // only run by one thread.
