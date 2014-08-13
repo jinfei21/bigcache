@@ -12,6 +12,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -20,22 +22,46 @@ import java.util.concurrent.Future;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class BigCachePerfTestA {
 	private static final int THREAD_COUNT = 128;
 	private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "performance/bigcache/";
 
 	private static BigCache<String> cache;
 
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
+		return Arrays.asList(data);
+	}
+
+	private BigCache<String> cache() throws IOException {
+		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
+		BigCache<String> cache = new BigCache<String>(TEST_DIR, config);
+		return cache;
+	}
+
 	@Test
 	public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
 		final int count = 400 * 1000;
 		final Sample sample = new Sample();
-		CacheConfig config = new CacheConfig();
-		cache = new BigCache<String>(TEST_DIR, config);
+
+		cache = cache();
 
 		long start = System.nanoTime();
 
@@ -71,8 +97,7 @@ public class BigCachePerfTestA {
 		final int count = 2 * 1000 * 1000;
 		ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-		CacheConfig config = new CacheConfig();
-		cache = new BigCache<String>(TEST_DIR, config);
+		cache = cache();
 
 		long start = System.nanoTime();
 		List<Future<?>> futures = new ArrayList<Future<?>>();

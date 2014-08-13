@@ -5,6 +5,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -12,10 +14,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class BigCachePerfTestB {
 
 	/********************* configurable parameters *********************/
@@ -34,12 +42,29 @@ public class BigCachePerfTestB {
 
 	private static BigCache<String> cache;
 
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
+		return Arrays.asList(data);
+	}
+
+	private BigCache<String> cache() throws IOException {
+		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
+		BigCache<String> cache = new BigCache<String>(TEST_DIR, config);
+		return cache;
+	}
+
 	@Test
 	public void testProduceThenConsume() throws IOException, InterruptedException {
 		System.out.println("SDB performance test begin ...");
 		for (int i = 0; i < LOOP; i++) {
-			CacheConfig config = new CacheConfig();
-			cache = new BigCache<String>(TEST_DIR, config);
+			cache = cache();
 			System.out.println("[doRunProduceThenConsume] round " + (i + 1) + " of " + LOOP);
 			this.doRunProduceThenConsume();
 			producingItemCount.set(0);
@@ -52,8 +77,7 @@ public class BigCachePerfTestB {
 	@Test
 	public void testProduceMixedConsume() throws IOException, InterruptedException {
 		for (int i = 0; i < LOOP; i++) {
-			CacheConfig config = new CacheConfig();
-			cache = new BigCache<String>(TEST_DIR, config);
+			cache = cache();
 			System.out.println("[doRunMixed] round " + (i + 1) + " of " + LOOP);
 			this.doRunProduceMixedConsume();
 			producingItemCount.set(0);

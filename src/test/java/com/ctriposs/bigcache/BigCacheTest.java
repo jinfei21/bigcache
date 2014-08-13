@@ -6,25 +6,45 @@ import static org.junit.Assert.assertNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class BigCacheTest {
 
 	private static final double STRESS_FACTOR = Double.parseDouble(System.getProperty("STRESS_FACTOR", "1.0"));
 	private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "function/bigcache/";
 
-	private static BigCache<String> cache;
+	private BigCache<String> cache;
+
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
+		return Arrays.asList(data);
+	}
 
 	@Test
 	public void testBigCache() throws IOException {
 		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
 		cache = new BigCache<String>(TEST_DIR, config);
 		Set<String> rndStringSet = new HashSet<String>();
 		for (int i = 0; i < 2000000 * STRESS_FACTOR; i++) {

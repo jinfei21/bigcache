@@ -2,24 +2,43 @@ package com.ctriposs.bigcache.storage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import static org.junit.Assert.*;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class StorageBlockTest {
 	
 	private static String testDir = TestUtil.TEST_BASE_DIR + "unit/storage_block_test/";
 	
 	private IStorageBlock block = null;
 	
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
+		return Arrays.asList(data);
+	}
+	
 	@Test
 	public void testBasic() throws IOException {
-		block = new StorageBlock(testDir, 1, StorageManager.DEFAULT_CAPACITY_PER_BLOCK);
+		block = new StorageBlock(testDir, 1, StorageManager.DEFAULT_CAPACITY_PER_BLOCK, storageMode);
 		
 		String testString = "Test String";
 		byte[] testBytes = testString.getBytes();
@@ -83,7 +102,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testlimitNunberOfItems() throws IOException {
-		block = new StorageBlock(testDir, 2, StorageManager.DEFAULT_CAPACITY_PER_BLOCK);
+		block = new StorageBlock(testDir, 2, StorageManager.DEFAULT_CAPACITY_PER_BLOCK, storageMode);
 		
 		int limit = 1000;
 		
@@ -161,7 +180,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testStoreOverflow() throws IOException {
-		block = new StorageBlock(testDir, 3, 1024 * 1024 + 1023); // 1M + 1023
+		block = new StorageBlock(testDir, 3, 1024 * 1024 + 1023, storageMode); // 1M + 1023
 		
 		byte[] sourceBytes = new byte[1024];
 		// populate
@@ -179,7 +198,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testUpdateOverflow() throws IOException {
-		block = new StorageBlock(testDir, 4, 1024 * 1024); // 1M
+		block = new StorageBlock(testDir, 4, 1024 * 1024, storageMode); // 1M
 		
 		byte[] sourceBytes = new byte[1024];
 		Pointer pointer = null;
@@ -205,14 +224,27 @@ public class StorageBlockTest {
 		pointer = block.update(pointer, new byte[513]);
 		assertNull(pointer); // overflow
 	}
-	
+
 	@After
 	public void clear() throws IOException {
 		if (this.block != null) {
 			this.block.close();
 		}
-		FileUtil.deleteDirectory(new File(testDir));
-	}
 
+		try {
+			FileUtil.deleteDirectory(new File(testDir));
+		} catch (IllegalStateException e) {
+			System.gc();
+			try {
+				FileUtil.deleteDirectory(new File(testDir));
+			} catch (IllegalStateException e1) {
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e2) {
+				}
+				FileUtil.deleteDirectory(new File(testDir));
+			}
+		}
+	}
 
 }

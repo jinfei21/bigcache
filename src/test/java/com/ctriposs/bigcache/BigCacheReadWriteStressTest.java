@@ -5,22 +5,42 @@ import static org.junit.Assert.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class BigCacheReadWriteStressTest {
 
 	private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "stress/bigcache/";
 
 	private static BigCache<String> cache;
 
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
+		return Arrays.asList(data);
+	}
+
 	public BigCache<String> cache(long count) throws IOException {
 		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
 		BigCache<String> cache = new BigCache<String>(TEST_DIR, config);
 
 		for (long i = 0; i < count; i++) {
@@ -90,6 +110,7 @@ public class BigCacheReadWriteStressTest {
 		final int defaultValueLen = 32;
 
 		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
 		cache = new BigCache<String>(TEST_DIR, config);
 		List<String> keys = new ArrayList<String>();
 

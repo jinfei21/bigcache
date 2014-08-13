@@ -43,6 +43,9 @@ public class BigCache<K> implements ICache<K> {
     /** The default threshold for dirty block recycling */
     public static final double DEFAULT_DIRTY_RATIO_THRESHOLD = 0.5;
 
+    /** The length of value can't be greater than 4m */
+    public static final int MAX_VALUE_LENGTH = 4 * 1024 * 1024;
+
 	/** The hit. */
 	protected AtomicLong hit = new AtomicLong();
 
@@ -92,7 +95,8 @@ public class BigCache<K> implements ICache<K> {
 		// clean up old cache data if exists
 		FileUtil.deleteDirectory(new File(this.cacheDir));
 		
-		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(), config.getInitialNumberOfBlocks());
+		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(),
+				config.getInitialNumberOfBlocks(), config.getStorageMode(), config.getMaxOffHeapMemorySize());
 		this.readWriteLock = new StripedReadWriteLock(config.getConcurrencyLevel());
 
         ses = new ScheduledThreadPoolExecutor(1);
@@ -108,6 +112,9 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public void put(K key, byte[] value, long tti) throws IOException {
+        if (value == null || value.length > MAX_VALUE_LENGTH) {
+            throw new IllegalArgumentException("value is null or too long");
+        }
 		writeLock(key);
 		try {
 			Pointer pointer = pointerMap.get(key);

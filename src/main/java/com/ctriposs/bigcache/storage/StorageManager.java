@@ -8,6 +8,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
+
 /**
  * Managing a list of used/free storage blocks for cache operations like get/put/delete
  * 
@@ -25,7 +27,7 @@ public class StorageManager implements IStorageBlock {
 	private final String dir;
 	
 	/**
-	 * The capacity per block
+	 * The capacity per block in bytes
 	 * 
 	 */
 	private final int capacityPerBlock;
@@ -48,7 +50,17 @@ public class StorageManager implements IStorageBlock {
 	 * Current active block for appending new cache data
 	 */
 	private volatile IStorageBlock activeBlock;
+
+	/**
+	 * Current storage mode
+	 */
+	private final StorageMode storageMode;
 	
+	/**
+	 * The number of memory blocks allow to be created.
+	 */
+	private int allowedOffHeapModeBlockCount;
+
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
@@ -56,17 +68,33 @@ public class StorageManager implements IStorageBlock {
 
 	/** The Constant DEFAULT_INITIAL_NUMBER_OF_BLOCKS. */
 	public final static int DEFAULT_INITIAL_NUMBER_OF_BLOCKS = 8; // 1GB total
+
+	/**
+	 * The Constant DEFAULT_MEMORY_SIZE.
+	 */
+	public static final long DEFAULT_MAX_OFFHEAP_MEMORY_SIZE = 2 * 1024 * 1024 * 1024L; //Unit: GB
 	
-	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks) throws IOException {
-		for(int i = 0; i < initialNumberOfBlocks; i++) {
-			IStorageBlock storageBlock = new StorageBlock(dir, i, capacityPerBlock);
+	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
+			long maxOffHeapMemorySize) throws IOException {
+		
+		if (storageMode != StorageMode.PureFile) {
+			this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
+		} else {
+			this.allowedOffHeapModeBlockCount = 0;
+		}
+		this.storageMode = storageMode;	
+		this.capacityPerBlock = capacityPerBlock;
+		this.dir = dir;
+			
+		for (int i = 0; i < initialNumberOfBlocks; i++) {
+			IStorageBlock storageBlock = this.createNewBlock(i);
 			freeBlocks.offer(storageBlock);
 		}
+
 		this.blockCount.set(initialNumberOfBlocks);
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
-        this.capacityPerBlock = capacityPerBlock;
-        this.dir = dir;
+
 	}
 
 	@Override
@@ -92,7 +120,7 @@ public class StorageManager implements IStorageBlock {
 				else { // still overflow
 					IStorageBlock freeBlock = this.freeBlocks.poll();
 					if (freeBlock == null) { // create a new one
-						freeBlock = new StorageBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+						freeBlock = this.createNewBlock(this.blockCount.getAndIncrement());
 					}
 					pointer = freeBlock.store(payload);
 					this.activeBlock = freeBlock;
@@ -121,7 +149,7 @@ public class StorageManager implements IStorageBlock {
 				if (this.activeBlock != exludingBlock) break;
 				IStorageBlock freeBlock = this.freeBlocks.poll();
 				if (freeBlock == null) {
-					freeBlock = new StorageBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+					freeBlock = this.createNewBlock(this.blockCount.getAndIncrement());
 				}
 				this.activeBlock = freeBlock;
 				this.usedBlocks.add(this.activeBlock);
@@ -181,6 +209,16 @@ public class StorageManager implements IStorageBlock {
 		usedBlocks.clear();
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
+	}
+
+	private IStorageBlock createNewBlock(int index) throws IOException {
+		if (this.allowedOffHeapModeBlockCount > 0) {
+			IStorageBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, this.storageMode);
+			this.allowedOffHeapModeBlockCount--;
+			return block;
+		} else {
+			return new StorageBlock(this.dir, index, this.capacityPerBlock, StorageMode.PureFile);
+		}
 	}
 
     // only run by one thread.
