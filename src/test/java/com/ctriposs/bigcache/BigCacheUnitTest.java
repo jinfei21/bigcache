@@ -4,20 +4,40 @@ import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class BigCacheUnitTest {
 
 	private static String TEST_DIR = TestUtil.TEST_BASE_DIR + "unit/bigcache/";
 	private static BigCache<Integer> cache;
 
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameters
+	public static Collection<StorageMode[]> data() throws IOException {
+		StorageMode[][] data = { { StorageMode.File },
+				{ StorageMode.MemoryMappedWithFile },
+				{ StorageMode.OffHeapWithFile } };
+		return Arrays.asList(data);
+	}
+
 	public BigCache<Integer> cache6() throws IOException {
 		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode);
 		BigCache<Integer> cache = new BigCache<Integer>(TEST_DIR, config);
 		cache.put(0, "A".getBytes());
 		cache.put(1, "B".getBytes());

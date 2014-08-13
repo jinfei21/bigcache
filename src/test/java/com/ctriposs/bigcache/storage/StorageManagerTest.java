@@ -2,24 +2,46 @@ package com.ctriposs.bigcache.storage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 
 import static org.junit.Assert.*;
 
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
+@RunWith(Parameterized.class)
 public class StorageManagerTest {
 	
 	private static String testDir = TestUtil.TEST_BASE_DIR + "unit/storage_manager_test/";
 	
 	private StorageManager storageManager = null;
-	
+
+	@Parameter(value = 0)
+	public StorageMode storageMode;
+
+	@Parameter(value = 1)
+	public long size;
+
+	@Parameters
+	public static Collection<Object[]> data() throws IOException {
+		Object[][] data = { { StorageMode.File, 0 },
+				{ StorageMode.MemoryMappedWithFile, 2 * 1000 * 1024 * 1024 },
+				{ StorageMode.OffHeapWithFile, 2 * 1000 * 1024 * 1024 } };
+		return Arrays.asList(data);
+	}
+
 	@Test
 	public void testBasic() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, storageMode, size); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -94,7 +116,7 @@ public class StorageManagerTest {
 	
 	@Test
 	public void testlimitNunberOfItems() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -186,7 +208,7 @@ public class StorageManagerTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testStoreOverflow() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -245,7 +267,7 @@ public class StorageManagerTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testUpdateOverflow() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -318,7 +340,21 @@ public class StorageManagerTest {
 		if (this.storageManager != null) {
 			this.storageManager.close();
 		}
-		FileUtil.deleteDirectory(new File(testDir));
+
+		try {
+			FileUtil.deleteDirectory(new File(testDir));
+		} catch (IllegalStateException e) {
+			System.gc();
+			try {
+				FileUtil.deleteDirectory(new File(testDir));
+			} catch (IllegalStateException e1) {
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e2) {
+				}
+				FileUtil.deleteDirectory(new File(testDir));
+			}
+		}
 	}
 
 }
