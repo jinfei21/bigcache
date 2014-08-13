@@ -30,9 +30,9 @@ public class StorageBlockTest {
 
 	@Parameters
 	public static Collection<StorageMode[]> data() throws IOException {
-		StorageMode[][] data = { { StorageMode.File },
-				{ StorageMode.MemoryMappedWithFile },
-				{ StorageMode.OffHeapWithFile } };
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
 		return Arrays.asList(data);
 	}
 	
@@ -102,7 +102,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testlimitNunberOfItems() throws IOException {
-		block = new StorageBlock(testDir, 2, StorageManager.DEFAULT_CAPACITY_PER_BLOCK, StorageMode.File);
+		block = new StorageBlock(testDir, 2, StorageManager.DEFAULT_CAPACITY_PER_BLOCK, storageMode);
 		
 		int limit = 1000;
 		
@@ -180,7 +180,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testStoreOverflow() throws IOException {
-		block = new StorageBlock(testDir, 3, 1024 * 1024 + 1023, StorageMode.File); // 1M + 1023
+		block = new StorageBlock(testDir, 3, 1024 * 1024 + 1023, storageMode); // 1M + 1023
 		
 		byte[] sourceBytes = new byte[1024];
 		// populate
@@ -198,7 +198,7 @@ public class StorageBlockTest {
 	
 	@Test
 	public void testUpdateOverflow() throws IOException {
-		block = new StorageBlock(testDir, 4, 1024 * 1024, StorageMode.File); // 1M
+		block = new StorageBlock(testDir, 4, 1024 * 1024, storageMode); // 1M
 		
 		byte[] sourceBytes = new byte[1024];
 		Pointer pointer = null;

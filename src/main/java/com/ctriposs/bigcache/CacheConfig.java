@@ -8,8 +8,8 @@ public class CacheConfig {
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
     private long purgeInterval = BigCache.DEFAULT_PURGE_INTERVAL;
-    private long maxMemoryStorageSize = StorageManager.DEFAULT_MEMORY_SIZE;
-    private StorageMode storageMode = StorageMode.File;
+    private long maxOffHeapMemorySize = StorageManager.DEFAULT_MAX_OFFHEAP_MEMORY_SIZE;
+    private StorageMode storageMode = StorageMode.PureFile;
 	
 	public int getConcurrencyLevel() {
 		return concurrencyLevel;
@@ -30,7 +30,7 @@ public class CacheConfig {
 
 	public CacheConfig setCapacityPerBlock(int capacityPerBlock) {
 		if(capacityPerBlock < 16 * 1024 * 1024){
-			throw new IllegalArgumentException("capacityPerBlock must be bigger than 16 * 1024 * 1024(16M)!");
+			throw new IllegalArgumentException("capacityPerBlock must be bigger than 16MB!");
 		}
 		
 		this.capacityPerBlock = capacityPerBlock;
@@ -69,22 +69,30 @@ public class CacheConfig {
 		return this;
 	}
 
-	public CacheConfig setStorageMode(StorageMode storageMode, long maxMemoryStorageSize) {
-		if (maxMemoryStorageSize < 0 || maxMemoryStorageSize > 10 * 1000 * 1024 * 1024) {
-			throw new IllegalArgumentException("maxMemoryStorageSize must be larger than 0 and smaller than 10GB!");
+	/**
+	 * Limiting Offheap memory usage.
+	 * 
+	 * Only takes effect when the {@link StorageMode} is set to MemoryMappedPlusFile or OffHeapPlusFile mode,
+	 * in these cases, this setting limits the max offheap memory size.
+	 * 
+	 * @param maxOffHeapMemorySize max offheap memory size allowed, unit : byte.
+	 * @return CacheConfig
+	 */
+	public CacheConfig setMaxOffHeapMemorySize(int maxOffHeapMemorySize) {
+		if (maxOffHeapMemorySize < this.capacityPerBlock) {
+			throw new IllegalArgumentException("maxOffHeapMemorySize must be equal to or larger than capacityPerBlock" + this.getCapacityPerBlock());
 		}
-		this.storageMode = storageMode;
-		this.maxMemoryStorageSize = maxMemoryStorageSize;
+		this.maxOffHeapMemorySize = maxOffHeapMemorySize;
 		return this;
 	}
 
-	public long getMaxMemoryStorageSize() {
-		return maxMemoryStorageSize;
+	public long getMaxOffHeapMemorySize() {
+		return this.maxOffHeapMemorySize;
 	}
 
 	public enum StorageMode {
-		File,
-		MemoryMappedWithFile,
-		OffHeapWithFile,
+		PureFile,
+		MemoryMappedPlusFile,
+		OffHeapPlusFile,
 	}
 }

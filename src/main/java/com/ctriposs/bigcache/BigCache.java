@@ -81,7 +81,7 @@ public class BigCache<K> implements ICache<K> {
 		FileUtil.deleteDirectory(new File(this.cacheDir));
 		
 		this.storageManager = new StorageManager(this.cacheDir, config.getCapacityPerBlock(),
-				config.getInitialNumberOfBlocks(), config.getStorageMode(), config.getMaxMemoryStorageSize());
+				config.getInitialNumberOfBlocks(), config.getStorageMode(), config.getMaxOffHeapMemorySize());
 		this.readWriteLock = new StripedReadWriteLock(config.getConcurrencyLevel());
 
         ses = new ScheduledThreadPoolExecutor(1);

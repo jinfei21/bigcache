@@ -40,13 +40,13 @@ public class StorageBlock implements IStorageBlock {
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
-		case File:
+		case PureFile:
 			underlyingStorage = new FileChannelStorage(dir, index, capacity);
 			break;
-		case MemoryMappedWithFile:
+		case MemoryMappedPlusFile:
 			underlyingStorage = new MemoryMappedStorage(dir, index, capacity);
 			break;
-		case OffHeapWithFile:
+		case OffHeapPlusFile:
 			underlyingStorage = new OffHeapStorage(capacity);
 			break;
 		}

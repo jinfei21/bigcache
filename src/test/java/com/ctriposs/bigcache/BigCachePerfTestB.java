@@ -47,9 +47,9 @@ public class BigCachePerfTestB {
 
 	@Parameters
 	public static Collection<StorageMode[]> data() throws IOException {
-		StorageMode[][] data = { { StorageMode.File },
-				{ StorageMode.MemoryMappedWithFile },
-				{ StorageMode.OffHeapWithFile } };
+		StorageMode[][] data = { { StorageMode.PureFile },
+				{ StorageMode.MemoryMappedPlusFile },
+				{ StorageMode.OffHeapPlusFile } };
 		return Arrays.asList(data);
 	}
 

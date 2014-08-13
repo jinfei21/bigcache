@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -27,7 +26,7 @@ public class StorageManager implements IStorageBlock {
 	private final String dir;
 	
 	/**
-	 * The capacity per block
+	 * The capacity per block in bytes
 	 * 
 	 */
 	private final int capacityPerBlock;
@@ -52,20 +51,14 @@ public class StorageManager implements IStorageBlock {
 	private volatile IStorageBlock activeBlock;
 
 	/**
-	 * Main storage mode
+	 * Current storage mode
 	 */
 	private final StorageMode storageMode;
-
-	/**
-	 * Max memory storage size.
-	 * This parameter is particularly used when storageMode is equal to StorageMode.MemoryMappedFile or StorageMode.OffHeapFile.
-	 */
-	private final long maxMemoryStorageSize;
 	
 	/**
-	 * The number of memory blocks can be created.
+	 * The number of memory blocks allow to be created.
 	 */
-	private final AtomicLong newMemoryBlockCount;
+	private int allowedOffHeapModeBlockCount;
 
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
@@ -78,33 +71,29 @@ public class StorageManager implements IStorageBlock {
 	/**
 	 * The Constant DEFAULT_MEMORY_SIZE.
 	 */
-	public static final int DEFAULT_MEMORY_SIZE = 2 * 1000 * 1024 * 1024; //2GB
+	public static final long DEFAULT_MAX_OFFHEAP_MEMORY_SIZE = 2 * 1024 * 1024 * 1024L; //Unit: GB
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
-			long maxMemoryStorageSize) throws IOException {
-		if (storageMode == StorageMode.File) {
-			this.newMemoryBlockCount = new AtomicLong(0);
+			long maxOffHeapMemorySize) throws IOException {
+		
+		if (storageMode != StorageMode.PureFile) {
+			this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
 		} else {
-			this.newMemoryBlockCount = new AtomicLong(maxMemoryStorageSize / capacityPerBlock);
+			this.allowedOffHeapModeBlockCount = 0;
 		}
-
+		this.storageMode = storageMode;	
+		this.capacityPerBlock = capacityPerBlock;
+		this.dir = dir;
+			
 		for (int i = 0; i < initialNumberOfBlocks; i++) {
-			IStorageBlock storageBlock;
-			if (this.newMemoryBlockCount.get() > 0) {
-				storageBlock = new StorageBlock(dir, i, capacityPerBlock, storageMode);
-			} else {
-				storageBlock = new StorageBlock(dir, i, capacityPerBlock, StorageMode.File);
-			}
+			IStorageBlock storageBlock = this.createNewBlock(i);
 			freeBlocks.offer(storageBlock);
 		}
 
 		this.blockCount.set(initialNumberOfBlocks);
 		this.activeBlock = freeBlocks.poll();
 		this.usedBlocks.add(this.activeBlock);
-		this.capacityPerBlock = capacityPerBlock;
-		this.dir = dir;
-		this.storageMode = storageMode;
-		this.maxMemoryStorageSize = maxMemoryStorageSize;
+
 	}
 
     @Override
@@ -135,7 +124,7 @@ public class StorageManager implements IStorageBlock {
 				else { // still overflow
 					IStorageBlock freeBlock = this.freeBlocks.poll();
 					if (freeBlock == null) { // create a new one
-						freeBlock = this.newBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+						freeBlock = this.createNewBlock(this.blockCount.getAndIncrement());
 					}
 					pointer = freeBlock.store(payload);
 					this.activeBlock = freeBlock;
@@ -164,7 +153,7 @@ public class StorageManager implements IStorageBlock {
 				if (this.activeBlock != exludingBlock) break;
 				IStorageBlock freeBlock = this.freeBlocks.poll();
 				if (freeBlock == null) {
-					freeBlock = this.newBlock(this.dir, this.blockCount.getAndIncrement(), this.capacityPerBlock);
+					freeBlock = this.createNewBlock(this.blockCount.getAndIncrement());
 				}
 				this.activeBlock = freeBlock;
 				this.usedBlocks.add(this.activeBlock);
@@ -225,11 +214,13 @@ public class StorageManager implements IStorageBlock {
 		this.usedBlocks.add(this.activeBlock);
 	}
 
-	private IStorageBlock newBlock(String dir, int index, int capacity) throws IOException {
-		if (this.newMemoryBlockCount.get() > 0) {
-			return new StorageBlock(dir, index, capacity, this.storageMode);
+	private IStorageBlock createNewBlock(int index) throws IOException {
+		if (this.allowedOffHeapModeBlockCount > 0) {
+			IStorageBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, this.storageMode);
+			this.allowedOffHeapModeBlockCount--;
+			return block;
 		} else {
-			return new StorageBlock(dir, index, capacity, StorageMode.File);
+			return new StorageBlock(this.dir, index, this.capacityPerBlock, StorageMode.PureFile);
 		}
 	}
 

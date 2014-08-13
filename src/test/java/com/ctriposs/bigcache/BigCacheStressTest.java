@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.TestUtil;
 
 public class BigCacheStressTest {
@@ -18,6 +19,7 @@ public class BigCacheStressTest {
 		int valueLengthLimit = 1024 * 16;
 
 		CacheConfig config = new CacheConfig();
+		config.setStorageMode(StorageMode.OffHeapPlusFile);
 		cache = new BigCache<String>(TEST_DIR, config);
 		Map<String, byte[]> map = new HashMap<String, byte[]>();
 

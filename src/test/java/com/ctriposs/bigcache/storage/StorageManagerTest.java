@@ -33,9 +33,9 @@ public class StorageManagerTest {
 
 	@Parameters
 	public static Collection<Object[]> data() throws IOException {
-		Object[][] data = { { StorageMode.File, 0 },
-				{ StorageMode.MemoryMappedWithFile, 2 * 1000 * 1024 * 1024 },
-				{ StorageMode.OffHeapWithFile, 2 * 1000 * 1024 * 1024 } };
+		Object[][] data = { { StorageMode.PureFile, 0 },
+				{ StorageMode.MemoryMappedPlusFile, 2 * 1000 * 1024 * 1024 },
+				{ StorageMode.OffHeapPlusFile, 2 * 1000 * 1024 * 1024 } };
 		return Arrays.asList(data);
 	}
 
@@ -116,7 +116,7 @@ public class StorageManagerTest {
 	
 	@Test
 	public void testlimitNunberOfItems() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, storageMode, size); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -208,7 +208,7 @@ public class StorageManagerTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testStoreOverflow() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, storageMode, size); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
@@ -267,7 +267,7 @@ public class StorageManagerTest {
 	@SuppressWarnings("resource")
 	@Test
 	public void testUpdateOverflow() throws IOException {
-		storageManager = new StorageManager(testDir, 1024 * 1024, 2, StorageMode.File, 0); // 2M Total
+		storageManager = new StorageManager(testDir, 1024 * 1024, 2, storageMode, size); // 2M Total
 		
 		assertTrue(2 == storageManager.getTotalBlockCount());
 		assertTrue(1 == storageManager.getFreeBlockCount());
