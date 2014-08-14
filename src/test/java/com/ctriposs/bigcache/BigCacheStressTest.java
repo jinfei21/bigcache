@@ -20,11 +20,15 @@ public class BigCacheStressTest {
 
 		CacheConfig config = new CacheConfig();
 		config.setStorageMode(StorageMode.OffHeapPlusFile);
+		config.setPurgeInterval(2 * 1000);
+		config.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
 		cache = new BigCache<String>(TEST_DIR, config);
 		Map<String, byte[]> map = new HashMap<String, byte[]>();
 
-		String rndString = TestUtil.randomString(valueLengthLimit);
-		byte[] rndBytes = rndString.getBytes();
+		String[] rndStrings = { TestUtil.randomString(valueLengthLimit / 2),
+				TestUtil.randomString(valueLengthLimit),
+				TestUtil.randomString(valueLengthLimit + valueLengthLimit / 2) };
+		byte[] rndBytes = rndStrings[1].getBytes();
 
 		Random random = new Random();
 
@@ -34,6 +38,7 @@ public class BigCacheStressTest {
 			int rndKey = random.nextInt(numKeyLimit);
 			boolean put = random.nextDouble() < 0.5 ? true : false;
 			if (put) {
+				rndBytes = rndStrings[random.nextInt(3)].getBytes();
 				map.put(String.valueOf(rndKey), rndBytes);
 				cache.put(String.valueOf(rndKey), rndBytes);
 			} else {
@@ -46,6 +51,8 @@ public class BigCacheStressTest {
 							+ (oldV == null ? null : new String(oldV)));
 				}
 			}
+
+			cache.put(counter + "-ttl", rndBytes, (long) 10 * 1000);
 
 			if (counter % 1000000 == 0) {
 				System.out.println("Current date " + new Date());

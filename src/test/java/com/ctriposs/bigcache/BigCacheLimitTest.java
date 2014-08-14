@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 
+import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
 import com.ctriposs.bigcache.utils.TestUtil;
 
@@ -15,6 +16,9 @@ public class BigCacheLimitTest {
 
 	public static void main(String args[]) throws IOException {
 		CacheConfig config = new CacheConfig();
+		config.setPurgeInterval(2 * 1000);
+		config.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
+		config.setStorageMode(StorageMode.OffHeapPlusFile);
 		cache = new BigCache<String>(TEST_DIR, config);
 
 		String rndString = TestUtil.randomString(10);
