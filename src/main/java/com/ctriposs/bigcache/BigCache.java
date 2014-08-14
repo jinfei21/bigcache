@@ -345,7 +345,7 @@ public class BigCache<K> implements ICache<K> {
                         }
 
                         if (pointer.isExpired()) {
-                            cache.storageManager.remove(pointer);
+                            cache.storageManager.removeLight(pointer);
                             cache.pointerMap.remove(key);
                             cache.purge.incrementAndGet();
                         } else {

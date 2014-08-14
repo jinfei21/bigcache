@@ -106,6 +106,12 @@ public class StorageManager implements IStorageBlock {
 	public byte[] remove(Pointer pointer) throws IOException {
 		return pointer.getStorageBlock().remove(pointer);
 	}
+    
+
+	@Override
+	public void removeLight(Pointer pointer) throws IOException {
+		pointer.getStorageBlock().removeLight(pointer);
+	}
 
 	@Override
 	public Pointer store(byte[] payload) throws IOException {
@@ -273,4 +279,5 @@ public class StorageManager implements IStorageBlock {
 	public int getTotalBlockCount() {
 		return this.getFreeBlockCount() + this.getUsedBlockCount();
 	}
+
 }

@@ -66,6 +66,13 @@ public class StorageBlock implements IStorageBlock {
 		usedStorage.addAndGet(-1 * pointer.getLength());
 		return payload;
 	}
+	
+
+	@Override
+	public void removeLight(Pointer pointer) throws IOException {
+		dirtyStorage.addAndGet(pointer.getLength());
+		usedStorage.addAndGet(-1 * pointer.getLength());
+	}
 
 	@Override
 	public Pointer store(byte[] payload) throws IOException {
@@ -214,4 +221,5 @@ public class StorageBlock implements IStorageBlock {
 		else if (this.getIndex() == o.getIndex()) return 0;
 		else return 1;
 	}
+	
 }

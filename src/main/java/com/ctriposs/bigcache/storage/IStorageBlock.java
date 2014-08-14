@@ -29,6 +29,14 @@ public interface IStorageBlock extends Comparable<IStorageBlock>, Closeable {
 	byte[] remove(Pointer pointer) throws IOException; 
 	
 	/**
+	 * Removes the payload without returning the payload
+	 * 
+	 * @param pointer the pointer
+	 * @throws IOException
+	 */
+	void removeLight(Pointer pointer) throws IOException;
+	
+	/**
 	 * Stores the payload.
 	 *
 	 * @param payload the payload
