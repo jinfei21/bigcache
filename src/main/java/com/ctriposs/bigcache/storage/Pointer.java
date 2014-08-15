@@ -10,9 +10,11 @@ public class Pointer {
 	/** The position. */
 	protected int position;
 	
-	/** The access time in milliseconds. */
-    // changed by multiple read thread, need to be volatile
-	protected volatile long lastAccessTime;
+	/** The access time in milliseconds.
+     *
+     * The modifications of other fields are protected by
+     */
+	protected volatile long lastAccessTime; // -1 means for not initialized.
 	
 	/** The length of the value. */
 	protected int length;
@@ -31,7 +33,7 @@ public class Pointer {
 	 * @param storageBlock the persistent cache storage
 	 */
 	public Pointer(int position, int length, StorageBlock storageBlock) {
-		this(position, length, System.currentTimeMillis(), storageBlock);
+		this(position, length, -1, storageBlock);
 	}
 	
 	/**
@@ -45,8 +47,8 @@ public class Pointer {
 	public Pointer(int position, int length, long accessTime, StorageBlock storageBlock) {
 		this.position = position;
 		this.length = length;
-		this.lastAccessTime = accessTime;
 		this.storageBlock = storageBlock;
+        setLastAccessTime(accessTime);
 	}
 	
 	/**
@@ -78,11 +80,31 @@ public class Pointer {
 	
 	/**
 	 * Sets the last access time.
+     *
+     * we need to put the following restriction:
+     * 1. We will always set the time to a bigger value than the current one.
+     * 2. If the pointer has expired, don't set the value, so there won't be <em>expire</em> to <em>non-expire</em>, which
+     * is wrong
 	 *
 	 * @param accessTime the new access time
+     * @return true if we has modified the time successfully.
 	 */
 	public void setLastAccessTime(long accessTime) {
-		this.lastAccessTime = accessTime;
+        synchronized(this) {
+            if (lastAccessTime < 0) {
+                // not initialized yet.
+                lastAccessTime = accessTime;
+                return;
+            }
+
+            // don't set it to an old value
+            if (lastAccessTime >= accessTime) return;
+
+            // can't update the access value if it has already expired.
+            if (isExpired()) return;
+
+            lastAccessTime = accessTime;
+        }
 	}
 	
 	/**
@@ -154,14 +176,23 @@ public class Pointer {
 		this.storageBlock = pointer.storageBlock;
 		return this;
 	}
+
+    public Pointer copyWithoutAccessTime(Pointer pointer) {
+        this.position = pointer.position;
+        this.length = pointer.length;
+        this.timeToIdle = pointer.timeToIdle;
+        this.storageBlock = pointer.storageBlock;
+        return this;
+    }
 	
 	/**
 	 * Is the cached item expired
-	 * 
+     *
 	 * @return expired or not
 	 */
 	public boolean isExpired() {
 		if (this.timeToIdle <= 0) return false; // never expire
+        if (this.lastAccessTime < 0) return false; // not initialized
 		return System.currentTimeMillis() - this.lastAccessTime > this.timeToIdle;
 	}
 }

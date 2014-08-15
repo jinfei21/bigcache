@@ -8,6 +8,7 @@ public class CacheConfig {
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
     private long purgeInterval = BigCache.DEFAULT_PURGE_INTERVAL;
+    private long mergeInterval = BigCache.DEFAULT_MERGE_INTERVAL;
     private double dirtyRatioThreshold = BigCache.DEFAULT_DIRTY_RATIO_THRESHOLD;
     private long maxOffHeapMemorySize = StorageManager.DEFAULT_MAX_OFFHEAP_MEMORY_SIZE;
     private StorageMode storageMode = StorageMode.PureFile;
@@ -58,6 +59,15 @@ public class CacheConfig {
 
     public CacheConfig setPurgeInterval(long purgeInterval) {
         this.purgeInterval = purgeInterval;
+        return this;
+    }
+
+    public long getMergeInterval() {
+        return mergeInterval;
+    }
+
+    public CacheConfig setMergeInterval(long mergeInterval) {
+        this.mergeInterval = mergeInterval;
         return this;
     }
 

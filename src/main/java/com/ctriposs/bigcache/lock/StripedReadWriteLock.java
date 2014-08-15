@@ -78,7 +78,7 @@ public class StripedReadWriteLock {
 	 * @param id value, from which lock is derived
 	 * @return lock which is associated with the id
 	 */
-	private ReentrantReadWriteLock getLock(int id) {
+	public ReentrantReadWriteLock getLock(int id) {
 		// locks.length-1 is a string of ones since lock.length is power of 2,
 		// thus ending cancels out the higher bits of id and leaves the lower bits
 		// to determine the lock.
