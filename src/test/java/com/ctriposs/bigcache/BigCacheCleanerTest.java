@@ -83,6 +83,7 @@ public class BigCacheCleanerTest {
                 .setConcurrencyLevel(10)
                 .setInitialNumberOfBlocks(8)
                 .setPurgeInterval(5 * 1000)
+                .setMergeInterval(5 * 1000)
                 .setDirtyRatioLimit(0.5)
                 .setStorageMode(storageMode);
         try {
@@ -137,7 +138,7 @@ public class BigCacheCleanerTest {
                 , sleepAfter);
         execute();
 
-        TestUtil.sleepQuietly(10000); // wait for cleaner
+        TestUtil.sleepQuietly(30000); // wait for cleaner
         assertEquals(count, cache.getPurgeCount());
         assertEquals(0, cache.count());
     }
@@ -165,7 +166,7 @@ public class BigCacheCleanerTest {
         execute();
 
         // The previous test is fast enough before the first run of cleaner
-        TestUtil.sleepQuietly(15000); // wait for cleaner
+        TestUtil.sleepQuietly(30000); // wait for cleaner
         assertEquals(count, cache.getMoveCount());
     }
 

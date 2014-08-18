@@ -229,19 +229,21 @@ public class StorageManager implements IStorageBlock {
 
     // only run by one thread.
     public void clean() {
-        Iterator<IStorageBlock> it = usedBlocks.iterator();
-        while(it.hasNext()) {
-            IStorageBlock storageBlock = it.next();
-            if (storageBlock == activeBlock) {
-                // let active block be cleaned in the next run
-                continue;
-            }
+        synchronized (this) {
+            Iterator<IStorageBlock> it = usedBlocks.iterator();
+            while(it.hasNext()) {
+                IStorageBlock storageBlock = it.next();
+                if (storageBlock == activeBlock) {
+                    // let active block be cleaned in the next run
+                    continue;
+                }
 
-            if (storageBlock.getUsed() == 0) {
-                // we will not allocating memory from it any more and it is used by nobody.
-                storageBlock.free();
-                freeBlocks.add(storageBlock);
-                it.remove();
+                if (storageBlock.getUsed() == 0) {
+                    // we will not allocating memory from it any more and it is used by nobody.
+                    storageBlock.free();
+                    freeBlocks.add(storageBlock);
+                    it.remove();
+                }
             }
         }
     }
