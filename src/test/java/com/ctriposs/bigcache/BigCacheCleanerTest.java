@@ -17,6 +17,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.runners.Parameterized.*;
 
 import com.ctriposs.bigcache.CacheConfig.StorageMode;
@@ -67,7 +68,7 @@ public class BigCacheCleanerTest {
     @Parameter(value = 0)
     public StorageMode storageMode;
 
-    @Parameters
+    @Parameters(name = "{0}")
     public static Collection<StorageMode[]> data() throws IOException {
         StorageMode[][] data = { { StorageMode.PureFile },
                 { StorageMode.MemoryMappedPlusFile },
@@ -126,40 +127,111 @@ public class BigCacheCleanerTest {
     }
 
     @Test
-    public void purgeTest() {
+    public void cacheDestroyTest() throws IOException {
+        cache.put("aa", "bb".getBytes());
+        cache.get("aa");
+        TestUtil.sleepQuietly(1000);
+        System.out.println(new String(cache.get("aa")));
+    }
+
+    @Test
+    public void simpleThreadPurgeTest() throws IOException {
+        String testStr = "thisisfortest";
+        cache.put("keywithoutttl", testStr.getBytes());
+        cache.put("keywithttl", testStr.getBytes(), 2 * 1000);
+
+        assertEquals(testStr, new String(cache.get("keywithttl")));
+        assertEquals(testStr, new String(cache.get("keywithoutttl")));
+
+        /**
+         * sleep for 4 seconds, so the entry with ttl will expired
+         */
+        TestUtil.sleepQuietly(4 * 1000);
+        assertEquals(testStr, new String(cache.get("keywithoutttl")));
+        assertEquals(null, cache.get("keywithttl"));
+        // still have 2 entries
+        assertEquals(2, cache.pointerMap.size());
+
+        // sleep a bit more than 1 minute for purge, and there is only one left
+        TestUtil.sleepQuietly(15 * 1000);
+        assertEquals(1, cache.pointerMap.size());
+
+        // remove the only one entry
+        assertTrue(cache.storageManager.getUsed() > 0);
+        cache.delete("keywithoutttl");
+        assertTrue(cache.storageManager.getUsed() == 0);
+    }
+
+    @Test
+    public void singleThreadMergeTest() throws IOException {
+        byte[] value = new byte[1000000]; // 1m-length value
+        // 10 entry with ttl, 6 without ttl
+        for (int i = 0; i < 10 ; i++) {
+            cache.put("block1-keywithttl-" + i, value, 5 * 1000);
+        }
+        for (int i = 10; i < 16; i++) {
+            cache.put("block1-keywithoutttl-" + i, value);
+        }
+
+        // do the same thing for the second block
+        for (int i = 0; i < 10 ; i++) {
+            cache.put("block2-keywithttl-" + i, value, 5 * 1000);
+        }
+        for (int i = 10; i < 16; i++) {
+            cache.put("block2-keywithoutttl-" + i, value);
+        }
+
+        assertEquals(2, cache.storageManager.getUsedBlockCount());
+        TestUtil.sleepQuietly(15000*2);
+        assertEquals(1, cache.storageManager.getUsedBlockCount());
+        assertEquals(12*1000*1000, cache.storageManager.getUsed());
+    }
+
+    @Test
+    public void multipleThreadPurgeTest() {
         int count = 500000;
         int workers = 1;
-        int valueLen = 16;
+        int valueLen = 4;
         int keyMax = count; // every key will be inserted once
         int ttl = 1000; // 1 second
         int sleepAfter = 0;
 
+        // 8m data with 5s ttl
+        createWorkers(WORKERTYPE.write, count, workers, valueLen, keyMax, ttl
+                , sleepAfter);
+
+        // another worker for 16m data
+        valueLen = 8;
         createWorkers(WORKERTYPE.write, count, workers, valueLen, keyMax, ttl
                 , sleepAfter);
         execute();
 
         TestUtil.sleepQuietly(30000); // wait for cleaner
-        assertEquals(count, cache.getPurgeCount());
+        assertEquals(count * 2, cache.getPurgeCount());
         assertEquals(0, cache.count());
     }
 
     @Test
-    public void moveTest() {
+    public void multipleThreadMergeTest() {
         int count = 100000; // 100k rounds
         int workers = 1;
         int valueLen = 100;
         int keyMax = count; // every key will be inserted once
-        int ttl = 100;
+        int ttl = 5 * 1000;
         int sleepAfter = 0;
-
-        // write 10m(40000)data that will soon expire
-        createWorkers(WORKERTYPE.write, count, workers, valueLen, keyMax, ttl
-                , sleepAfter);
 
         count = 100000;
         valueLen = 4;
         ttl = 0;
         // write 400k data that will never expire
+        createWorkers(WORKERTYPE.write, count, workers, valueLen, keyMax, ttl
+                , sleepAfter);
+
+        execute(false);
+
+        valueLen = 84;
+        ttl = 1 * 1000;
+        // write a bit more than 8m data that will expires in 5 seconds slowly
         createWorkers(WORKERTYPE.write, count, workers, valueLen, keyMax, ttl
                 , sleepAfter);
 
@@ -557,7 +629,7 @@ public class BigCacheCleanerTest {
                     .setTtl(ttl)
                     .setKeyMax(keyMax)
                     .setKeyStart(randomInt(keyMax))
-                    .setKeyStep(randomPrime())
+                    .setKeyStep(step)
                     .setSleepAfter(sleepAfter)
                     .setValueLen(valueLen);
             if (type == WORKERTYPE.delete) {

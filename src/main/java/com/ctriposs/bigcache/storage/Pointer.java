@@ -14,7 +14,7 @@ public class Pointer {
      *
      * The modifications of other fields are protected by
      */
-	protected volatile long lastAccessTime; // -1 means for not initialized.
+	protected volatile long lastAccessTime = -1; // -1 means for not initialized.
 	
 	/** The length of the value. */
 	protected int length;
