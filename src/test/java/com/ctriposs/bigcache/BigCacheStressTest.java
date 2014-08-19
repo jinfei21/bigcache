@@ -19,9 +19,10 @@ public class BigCacheStressTest {
 		int valueLengthLimit = 1024 * 16;
 
 		CacheConfig config = new CacheConfig();
-		config.setStorageMode(StorageMode.OffHeapPlusFile);
-		config.setPurgeInterval(2 * 1000);
-		config.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
+		config.setStorageMode(StorageMode.OffHeapPlusFile)
+				.setPurgeInterval(2 * 1000)
+				.setMergeInterval(2 * 1000)
+				.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
 		cache = new BigCache<String>(TEST_DIR, config);
 		Map<String, byte[]> map = new HashMap<String, byte[]>();
 

@@ -51,7 +51,10 @@ public class BigCachePerfTestA {
 
 	private BigCache<String> cache() throws IOException {
 		CacheConfig config = new CacheConfig();
-		config.setStorageMode(storageMode);
+		config.setStorageMode(storageMode)
+				.setCapacityPerBlock(20 * 1024 * 1024)
+				.setMergeInterval(2 * 1000)
+				.setPurgeInterval(2 * 1000);
 		BigCache<String> cache = new BigCache<String>(TEST_DIR, config);
 		return cache;
 	}
