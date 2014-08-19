@@ -4,15 +4,19 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import sun.misc.Unsafe;
 
 public class OffHeapStorage implements IStorage {
 
-	private final long address;
+	protected final AtomicBoolean disposed = new AtomicBoolean(false);
+	protected ByteBuffer byteBuffer;
+
 	private static final Unsafe UNSAFE = getUnsafe();
-	private static final long ARRAY_BASE_OFFSET = (long) UNSAFE.arrayBaseOffset(byte[].class);
-	private ByteBuffer byteBuffer;
+	private static final long BYTE_ARRAY_OFFSET = (long) UNSAFE.arrayBaseOffset(byte[].class);
+
+	private final long address;
 
 	private static Unsafe getUnsafe() {
 		try {
@@ -25,11 +29,15 @@ public class OffHeapStorage implements IStorage {
 	}
 
 	public OffHeapStorage(int capacity) {
-		byteBuffer = ByteBuffer.allocateDirect(capacity);
+		this.address = UNSAFE.allocateMemory(capacity);
+	}
+
+	public OffHeapStorage(int capacity, ByteBuffer buffer) {
+		this.byteBuffer = ByteBuffer.allocateDirect(capacity);
 		try {
 			Method method = byteBuffer.getClass().getDeclaredMethod("address");
 			method.setAccessible(true);
-			address = (Long) method.invoke(byteBuffer);
+			this.address = (Long) method.invoke(byteBuffer);
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to allocate offheap memory using sun.misc.Unsafe on your platform", e);
 		}
@@ -37,20 +45,16 @@ public class OffHeapStorage implements IStorage {
 
 	@Override
 	public void close() throws IOException {
-		try {
-			Field cleanerField = byteBuffer.getClass().getDeclaredField("cleaner");
-			cleanerField.setAccessible(true);
-			sun.misc.Cleaner cleaner = (sun.misc.Cleaner) cleanerField.get(byteBuffer);
-			cleaner.clean();
-		} catch (Exception e) {
-			throw new Error(e);
-		}
+		if (!disposed.compareAndSet(false, true))
+			return;
+		UNSAFE.freeMemory(address);
 	}
 
 	@Override
 	public void get(int position, byte[] dest) throws IOException {
+		assert !disposed.get() : "disposed";
 		assert position >= 0 : position;
-		this.get(address + position, dest, ARRAY_BASE_OFFSET, dest.length);
+		this.get(address + position, dest, BYTE_ARRAY_OFFSET, dest.length);
 	}
 
 	/**
@@ -67,8 +71,9 @@ public class OffHeapStorage implements IStorage {
 
 	@Override
 	public void put(int position, byte[] source) throws IOException {
+		assert !disposed.get() : "disposed";
 		assert position >= 0 : position;
-		this.put(ARRAY_BASE_OFFSET, source, address + position, source.length);
+		this.put(BYTE_ARRAY_OFFSET, source, address + position, source.length);
 
 	}
 
