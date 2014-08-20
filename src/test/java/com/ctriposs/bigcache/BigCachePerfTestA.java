@@ -2,15 +2,8 @@ package com.ctriposs.bigcache;
 
 import static org.junit.Assert.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -29,6 +22,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
+import com.ctriposs.bigcache.utils.TestSample;
 import com.ctriposs.bigcache.utils.TestUtil;
 
 @RunWith(Parameterized.class)
@@ -62,7 +56,7 @@ public class BigCachePerfTestA {
 	@Test
 	public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
 		final int count = 400 * 1000;
-		final Sample sample = new Sample();
+		final TestSample sample = new TestSample();
 
 		cache = cache();
 
@@ -73,21 +67,21 @@ public class BigCachePerfTestA {
 			sample.intA = i;
 			sample.doubleA = i;
 			sample.longA = i;
-			cache.put(users(user, i), sample.toBytes());
+			cache.put(TestSample.users(user, i), sample.toBytes());
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(users(user, i));
+			byte[] result = cache.get(TestSample.users(user, i));
 			assertNotNull(result);
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(users(user, i));
-			Sample re = Sample.fromBytes(result);
+			byte[] result = cache.get(TestSample.users(user, i));
+			TestSample re = TestSample.fromBytes(result);
 			assertEquals(i, re.intA);
 			assertEquals(i, re.doubleA, 0.0);
 			assertEquals(i, re.longA);
 		}
 		for (int i = 0; i < count; i++) {
-			cache.delete(users(user, i));
+			cache.delete(TestSample.users(user, i));
 		}
 		assertEquals(cache.count(), 0);
 		long duration = System.nanoTime() - start;
@@ -111,27 +105,27 @@ public class BigCachePerfTestA {
 				@Override
 				public void run() {
 					try {
-						final Sample sample = new Sample();
+						final TestSample sample = new TestSample();
 						StringBuilder user = new StringBuilder();
 						for (int j = finalI; j < count; j += THREAD_COUNT) {
 							sample.intA = j;
 							sample.doubleA = j;
 							sample.longA = j;
-							cache.put(users(user, j), sample.toBytes());
+							cache.put(TestSample.users(user, j), sample.toBytes());
 						}
 						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							byte[] result = cache.get(users(user, j));
+							byte[] result = cache.get(TestSample.users(user, j));
 							assertNotNull(result);
 						}
 						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							byte[] result = cache.get(users(user, j));
-							Sample re = Sample.fromBytes(result);
+							byte[] result = cache.get(TestSample.users(user, j));
+							TestSample re = TestSample.fromBytes(result);
 							assertEquals(j, re.intA);
 							assertEquals(j, re.doubleA, 0.0);
 							assertEquals(j, re.longA);
 						}
 						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							cache.delete(users(user, j));
+							cache.delete(TestSample.users(user, j));
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -171,77 +165,4 @@ public class BigCachePerfTestA {
 			}
 		}
 	}
-
-	public static class Sample implements Serializable {
-		private static final long serialVersionUID = 1L;
-		public String stringA = "aaaaaaaaaa";
-		public String stringB = "bbbbbbbbbb";
-		public BuySell enumA = BuySell.Buy;
-		public BuySell enumB = BuySell.Sell;
-		public int intA = 123456;
-		public int intB = 654321;
-		public double doubleA = 1.23456789;
-		public double doubleB = 9.87654321;
-		public long longA = 987654321;
-		public long longB = 123456789;
-
-		public byte[] toBytes() throws IOException {
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = null;
-			try {
-				out = new ObjectOutputStream(bos);
-				out.writeObject(this);
-				byte[] yourBytes = bos.toByteArray();
-				return yourBytes;
-			} finally {
-				try {
-					if (out != null) {
-						out.close();
-					}
-				} catch (IOException ex) {
-					// ignore close exception
-				}
-				try {
-					bos.close();
-				} catch (IOException ex) {
-					// ignore close exception
-				}
-			}
-		}
-
-		public static Sample fromBytes(byte[] bytes) throws ClassNotFoundException, IOException {
-			ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-			ObjectInput in = null;
-			try {
-				in = new ObjectInputStream(bis);
-				Object o = in.readObject();
-				return (Sample) o;
-			} finally {
-				try {
-					bis.close();
-				} catch (IOException ex) {
-					// ignore close exception
-				}
-				try {
-					if (in != null) {
-						in.close();
-					}
-				} catch (IOException ex) {
-					// ignore close exception
-				}
-			}
-		}
-	}
-
-	enum BuySell {
-		Buy, Sell
-	}
-
-	public static String users(StringBuilder user, int i) {
-		user.setLength(0);
-		user.append("user:");
-		user.append(i);
-		return user.toString();
-	}
-
 }
