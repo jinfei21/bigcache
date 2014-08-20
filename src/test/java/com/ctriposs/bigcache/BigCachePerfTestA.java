@@ -33,7 +33,7 @@ import com.ctriposs.bigcache.utils.TestUtil;
 
 @RunWith(Parameterized.class)
 public class BigCachePerfTestA {
-	private static final int THREAD_COUNT = 128;
+	private static final int THREAD_COUNT = 1;
 	private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "performance/bigcache/";
 
 	private static BigCache<String> cache;
@@ -43,8 +43,8 @@ public class BigCachePerfTestA {
 
 	@Parameters
 	public static Collection<StorageMode[]> data() throws IOException {
-		StorageMode[][] data = { { StorageMode.PureFile },
-				{ StorageMode.MemoryMappedPlusFile },
+		StorageMode[][] data = { //{ StorageMode.PureFile },
+				//{ StorageMode.MemoryMappedPlusFile },
 				{ StorageMode.OffHeapPlusFile } };
 		return Arrays.asList(data);
 	}
@@ -54,46 +54,12 @@ public class BigCachePerfTestA {
 		config.setStorageMode(storageMode)
 				.setCapacityPerBlock(20 * 1024 * 1024)
 				.setMergeInterval(2 * 1000)
-				.setPurgeInterval(2 * 1000);
+//				.setPurgeInterval(2 * 1000)
+				.setPurgeInterval(20 * 1000);
 		BigCache<String> cache = new BigCache<String>(TEST_DIR, config);
 		return cache;
 	}
 
-	@Test
-	public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
-		final int count = 400 * 1000;
-		final Sample sample = new Sample();
-
-		cache = cache();
-
-		long start = System.nanoTime();
-
-		StringBuilder user = new StringBuilder();
-		for (int i = 0; i < count; i++) {
-			sample.intA = i;
-			sample.doubleA = i;
-			sample.longA = i;
-			cache.put(users(user, i), sample.toBytes());
-		}
-		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(users(user, i));
-			assertNotNull(result);
-		}
-		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(users(user, i));
-			Sample re = Sample.fromBytes(result);
-			assertEquals(i, re.intA);
-			assertEquals(i, re.doubleA, 0.0);
-			assertEquals(i, re.longA);
-		}
-		for (int i = 0; i < count; i++) {
-			cache.delete(users(user, i));
-		}
-		assertEquals(cache.count(), 0);
-		long duration = System.nanoTime() - start;
-		System.out.printf("Put/get %,d K operations per second%n",
-				(int) (count * 4 * 1e6 / duration));
-	}
 
 	@Test
 	public void testMultiThreadReadWrite() throws InterruptedException, ExecutionException, IOException {
@@ -117,26 +83,19 @@ public class BigCachePerfTestA {
 							sample.intA = j;
 							sample.doubleA = j;
 							sample.longA = j;
-							cache.put(users(user, j), sample.toBytes());
+							cache.put(users(user, j), sample.toBytes(), 2000);
 						}
+						Thread.sleep(30 * 1000);
+//						Thread.sleep(60 * 1000);
+						print(cache.getPurgeCount());
 						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							byte[] result = cache.get(users(user, j));
-							assertNotNull(result);
-						}
-						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							byte[] result = cache.get(users(user, j));
-							Sample re = Sample.fromBytes(result);
-							assertEquals(j, re.intA);
-							assertEquals(j, re.doubleA, 0.0);
-							assertEquals(j, re.longA);
-						}
-						for (int j = finalI; j < count; j += THREAD_COUNT) {
-							cache.delete(users(user, j));
+							assertNull(cache.get(users(user, j)));
+						
 						}
 					} catch (IOException e) {
 						e.printStackTrace();
-					} catch (ClassNotFoundException e1) {
-						e1.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
 				}
 
@@ -151,6 +110,10 @@ public class BigCachePerfTestA {
 		System.out.printf("Put/get %,d K operations per second%n",
 				(int) (count * 4 * 1e6 / duration));
 		service.shutdown();
+	}
+	
+	public static void print(long l){
+		System.out.println(l);
 	}
 
 	@After
