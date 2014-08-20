@@ -72,6 +72,24 @@ public class StripedReadWriteLock {
 		getLock(id).writeLock().unlock();
 	}
 
+    /**
+     * Locks all locks as write lock.
+     */
+    public void writeLockForAll() {
+        for (int i = 0; i < locks.length; i++) {
+            getLock(i).writeLock().lock();
+        }
+    }
+
+    /**
+     * Unlocks all locks as write lock.
+     */
+    public void writeUnlockForAll() {
+        for (int i = 0; i < locks.length; i++) {
+            getLock(i).writeLock().unlock();
+        }
+    }
+
 	/**
 	 * Finds the lock associated with the id
 	 * 

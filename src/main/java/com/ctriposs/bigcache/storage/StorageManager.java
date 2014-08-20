@@ -184,9 +184,19 @@ public class StorageManager implements IStorageBlock {
 		return dirtyStorage;
 	}
 
+    private Set<IStorageBlock> getAllInUsedBlocks() {
+        Set<IStorageBlock> allBlocks = new HashSet<IStorageBlock>();
+        allBlocks.addAll(usedBlocks);
+        allBlocks.addAll(freeBlocks);
+        return allBlocks;
+    }
+
 	@Override
 	public long getCapacity() {
-		long totalCapacity = (usedBlocks.size() + freeBlocks.size()) * capacityPerBlock;
+        long totalCapacity = 0;
+        for(IStorageBlock block : getAllInUsedBlocks()) {
+            totalCapacity += block.getCapacity();
+        }
 		return totalCapacity;
 	}
 	

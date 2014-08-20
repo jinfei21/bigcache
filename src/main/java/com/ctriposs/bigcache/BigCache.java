@@ -3,11 +3,11 @@ package com.ctriposs.bigcache;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.ctriposs.bigcache.lock.StripedReadWriteLock;
 import com.ctriposs.bigcache.storage.Pointer;
@@ -19,8 +19,8 @@ import com.ctriposs.bigcache.utils.FileUtil;
  * The Class BigCache is a cache that uses persistent storage
  * to store or retrieve data in byte array. To do so,
  * BigCache uses pointers to point location(offset) of an item within a persistent storage block.
- * BigCache clears the storages periodically to gain free space if
- * storages are dirty(storage holes because of deletion). It also does eviction depending on
+ * BigCache clears the storage periodically to gain free space if
+ * storage are dirty(storage holes because of deletion). It also does eviction depending on
  * access time to the objects.
  * 
  * @param <K> the key type
@@ -29,24 +29,18 @@ public class BigCache<K> implements ICache<K> {
 
 	/** The Constant DELTA. */
 	//private static final float DELTA = 0.00001f;
-	
-	/** The default storage block cleaning period which is 10 minutes. */
-	public static final long DEFAULT_STORAGE_BLOCK_CLEANING_PERIOD = 10 * 60 * 1000;
-	
+
 	/** The default purge interval which is 5 minutes. */
 	public static final long DEFAULT_PURGE_INTERVAL = 5 * 60 * 1000;
 
     /** The default merge interval which is 10 minutes. */
     public static final long DEFAULT_MERGE_INTERVAL = 10 * 60 * 1000;
 
-	/** The default storage block cleaning threshold. */
-	public static final float DEFAULT_STORAGE_BLOCK_CLEANING_THRESHOLD = 0.5f;
-	
-	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
-	public static final int DEFAULT_CONCURRENCY_LEVEL = 4;
-
     /** The default threshold for dirty block recycling */
     public static final double DEFAULT_DIRTY_RATIO_THRESHOLD = 0.5;
+
+	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
+	public static final int DEFAULT_CONCURRENCY_LEVEL = 8; // 256 concurrent level
 
     /** The length of value can't be greater than 4m */
     public static final int MAX_VALUE_LENGTH = 4 * 1024 * 1024;
@@ -63,8 +57,8 @@ public class BigCache<K> implements ICache<K> {
     /** The # of moves for dirty block recycle. */
     protected AtomicLong move = new AtomicLong();
 
-	/** The pointer map. */
-	protected final ConcurrentMap<K, Pointer> pointerMap = new ConcurrentHashMap<K, Pointer>();
+	/** The internal map. */
+	protected final ConcurrentMap<K, CacheValueWrapper> pointerMap = new ConcurrentHashMap<K, CacheValueWrapper>();
 
 	/** Managing the storages. */
 	/* package for ut */ final StorageManager storageManager;
@@ -73,10 +67,10 @@ public class BigCache<K> implements ICache<K> {
 	private final StripedReadWriteLock readWriteLock;
 
 	/** The Constant NO_OF_CLEANINGS. */
-	//private static final AtomicInteger NO_OF_CLEANINGS = new AtomicInteger();
+	private final AtomicLong NO_OF_CLEANINGS = new AtomicLong();
 	
 	/** The Constant NO_OF_PURGES. */
-	//private static final AtomicInteger NO_OF_PURGES = new AtomicInteger();
+	private final AtomicLong NO_OF_PURGES = new AtomicLong();
 	
 	/** The directory to store cached data */
 	private String cacheDir;
@@ -121,17 +115,24 @@ public class BigCache<K> implements ICache<K> {
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
+
 		writeLock(key);
 		try {
-			Pointer pointer = pointerMap.get(key);
-			if (pointer == null) {
+			CacheValueWrapper wrapper = pointerMap.get(key);
+            Pointer pointer; // pointer with new storage info
+
+			if (wrapper == null) {
+                // create a new one
+                wrapper = new CacheValueWrapper();
 				pointer = storageManager.store(value);
 			} else {
-				pointer = storageManager.update(pointer, value);
+                // update and get the new storage
+				pointer = storageManager.update(wrapper.getPointer(), value);
 			}
-			pointer.setTimeToIdle(tti);
-            pointer.setLastAccessTime(System.currentTimeMillis());
-			pointerMap.put(key, pointer);
+            wrapper.setPointer(pointer);
+			wrapper.setTimeToIdle(tti);
+            wrapper.setLastAccessTime(System.currentTimeMillis());
+			pointerMap.put(key, wrapper);
 		} finally {
 			writeUnlock(key);
 		}
@@ -141,19 +142,18 @@ public class BigCache<K> implements ICache<K> {
 	public byte[] get(K key) throws IOException {
 		readLock(key);
 		try {
-			Pointer pointer = pointerMap.get(key);
-            // the access time can be modified by other readers below.
+			CacheValueWrapper wrapper = pointerMap.get(key);
 
-            if (pointer == null) {
+            if (wrapper == null) {
                 return null;
             }
 
-            synchronized (pointer) { // pointer may be modified in move thread, use lock here
-                if (!pointer.isExpired()) {
+            synchronized (wrapper) { // this object may be modified in move thread, use lock here
+                if (!wrapper.isExpired()) {
                     // access time updated, the following change will not be lost
                     hit.incrementAndGet();
-                    pointer.setLastAccessTime(System.currentTimeMillis());
-                    return storageManager.retrieve(pointer);
+                    wrapper.setLastAccessTime(System.currentTimeMillis());
+                    return storageManager.retrieve(wrapper.getPointer());
                 } else {
                     miss.incrementAndGet();
                     return null;
@@ -169,9 +169,9 @@ public class BigCache<K> implements ICache<K> {
 	public byte[] delete(K key) throws IOException {
 		writeLock(key);
 		try {
-			Pointer pointer = pointerMap.get(key);
-			if (pointer != null) {
-				byte[] payload = storageManager.remove(pointer);
+			CacheValueWrapper wrapper = pointerMap.get(key);
+			if (wrapper != null) {
+				byte[] payload = storageManager.remove(wrapper.getPointer());
 				pointerMap.remove(key);
 				return payload;
 			}
@@ -274,6 +274,27 @@ public class BigCache<K> implements ICache<K> {
 		return pointerMap.size();
 	}
 
+    /**
+     * Get the total usage of all the entries, without considering of expiration.
+     *
+     * This should be done by a single thread, and other thread will be blocked. So
+     * this function should only be used in test.
+     *
+     * @return the total usage.
+     */
+    public long getUsed() {
+        readWriteLock.writeLockForAll();
+        try {
+            long result = 0;
+            for (CacheValueWrapper wrapper : pointerMap.values()) {
+                result += wrapper.getPointer().getLength();
+            }
+            return result;
+        } finally {
+            readWriteLock.writeUnlockForAll();
+        }
+    }
+
     abstract static class CacheDaemonWorker<K> implements Runnable {
         private WeakReference<BigCache<K>> cacheHolder;
         private ScheduledExecutorService ses;
@@ -325,8 +346,8 @@ public class BigCache<K> implements ICache<K> {
 
             // find all the keys that may be expired. It's lock less as we will validate later.
             for(K key : keys) {
-                Pointer pointer = cache.pointerMap.get(key);
-                if (pointer != null && pointer.isExpired()) {
+                CacheValueWrapper wrapper = cache.pointerMap.get(key);
+                if (wrapper != null && wrapper.isExpired()) {
                     ReadWriteLock lock = cache.getLock(key);
                     List<K> keyList = expiredKeys.get(lock);
                     if (keyList == null) {
@@ -347,9 +368,9 @@ public class BigCache<K> implements ICache<K> {
                 lock.writeLock().lock();
                 try {
                     for(K key : keyList) {
-                        Pointer pointer = cache.pointerMap.get(key);
-                        if (pointer != null && pointer.isExpired()) {
-                            cache.storageManager.removeLight(pointer);
+                        CacheValueWrapper wrapper = cache.pointerMap.get(key);
+                        if (wrapper != null && wrapper.isExpired()) { // double check
+                            cache.storageManager.removeLight(wrapper.getPointer());
                             cache.pointerMap.remove(key);
                             cache.purge.incrementAndGet();
                         }
@@ -358,6 +379,7 @@ public class BigCache<K> implements ICache<K> {
                     lock.writeLock().unlock();
                 }
             }
+            cache.NO_OF_PURGES.incrementAndGet();
         }
     }
 
@@ -375,9 +397,11 @@ public class BigCache<K> implements ICache<K> {
 
             // find all the keys that need to be moved. It's lock less as we will validate later.
             for(K key : keys) {
-                Pointer pointer = cache.pointerMap.get(key);
+                CacheValueWrapper wrapper = cache.pointerMap.get(key);
                 StorageBlock sb;
-                if (pointer != null
+                Pointer pointer;
+                if (wrapper != null
+                        && ((pointer = wrapper.getPointer()) != null)
                         && ((sb = pointer.getStorageBlock()) != null)
                         && (sb.getDirtyRatio() > cache.dirtyRatioThreshold)) {
                     Integer index = sb.getIndex();
@@ -398,19 +422,19 @@ public class BigCache<K> implements ICache<K> {
                 for(K key : keyList) {
                     cache.readLock(key);
                     try {
-                        Pointer pointer = cache.pointerMap.get(key);
-                        if (pointer == null) {
+                        CacheValueWrapper wrapper = cache.pointerMap.get(key);
+                        if (wrapper == null) {
                             // not exist now and do nothing, continue with next key;
                             continue;
                         }
 
-                        // pointer is accessed/modified by reader and the merger, use lock here
-                        synchronized (pointer) {
-                            StorageBlock sb = pointer.getStorageBlock();
+                        // wrapper is accessed/modified by reader and the merger, use lock here
+                        synchronized (wrapper) {
+                            StorageBlock sb = wrapper.getPointer().getStorageBlock();
                             if (sb.getDirtyRatio() > cache.dirtyRatioThreshold) {
-                                byte[] payload = cache.storageManager.remove(pointer);
+                                byte[] payload = cache.storageManager.remove(wrapper.getPointer());
                                 Pointer newPointer = cache.storageManager.storeExcluding(payload, sb);
-                                pointer.copyWithoutAccessTime(newPointer);
+                                wrapper.setPointer(newPointer);
                                 cache.move.incrementAndGet();
                             }
                         }
