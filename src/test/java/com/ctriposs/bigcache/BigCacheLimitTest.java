@@ -15,10 +15,12 @@ public class BigCacheLimitTest {
 	private static BigCache<String> cache;
 
 	public static void main(String args[]) throws IOException {
-		CacheConfig config = new CacheConfig();
-		config.setPurgeInterval(2 * 1000);
-		config.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
-		config.setStorageMode(StorageMode.OffHeapPlusFile);
+		CacheConfig config = new CacheConfig()
+				.setStorageMode(StorageMode.OffHeapPlusFile)
+				.setPurgeInterval(2 * 1000)
+				.setMergeInterval(2 * 1000)
+				.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024L);
+
 		cache = new BigCache<String>(TEST_DIR, config);
 
 		String rndString = TestUtil.randomString(10);

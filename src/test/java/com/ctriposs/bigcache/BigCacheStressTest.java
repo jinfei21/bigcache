@@ -22,7 +22,7 @@ public class BigCacheStressTest {
 		config.setStorageMode(StorageMode.OffHeapPlusFile)
 				.setPurgeInterval(2 * 1000)
 				.setMergeInterval(2 * 1000)
-				.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024);
+				.setMaxOffHeapMemorySize(10 * 1000 * 1024 * 1024L);
 		cache = new BigCache<String>(TEST_DIR, config);
 		Map<String, byte[]> map = new HashMap<String, byte[]>();
 
@@ -61,8 +61,6 @@ public class BigCacheStressTest {
 				System.out.println(TestUtil.printMemoryFootprint());
 				long end = System.currentTimeMillis();
 				System.out.println("timeSpent = " + (end - start));
-				start = System.currentTimeMillis();
-
 				// validation
 				for (int i = 0; i < numKeyLimit; i++) {
 					String key = String.valueOf(i);
@@ -83,7 +81,8 @@ public class BigCacheStressTest {
 						}
 					}
 				}
-
+				//exclude validation process from time count
+				start = System.currentTimeMillis();
 			}
 		}
 	}
