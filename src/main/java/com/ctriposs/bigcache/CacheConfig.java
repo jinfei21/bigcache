@@ -98,7 +98,7 @@ public class CacheConfig {
 	 * @param maxOffHeapMemorySize max offheap memory size allowed, unit : byte.
 	 * @return CacheConfig
 	 */
-	public CacheConfig setMaxOffHeapMemorySize(int maxOffHeapMemorySize) {
+	public CacheConfig setMaxOffHeapMemorySize(long maxOffHeapMemorySize) {
 		if (maxOffHeapMemorySize < this.capacityPerBlock) {
 			throw new IllegalArgumentException("maxOffHeapMemorySize must be equal to or larger than capacityPerBlock" + this.getCapacityPerBlock());
 		}
