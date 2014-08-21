@@ -8,6 +8,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.After;
 import org.junit.Test;
@@ -18,6 +22,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.ctriposs.bigcache.CacheConfig.StorageMode;
 import com.ctriposs.bigcache.utils.FileUtil;
+import com.ctriposs.bigcache.utils.TestSample;
 import com.ctriposs.bigcache.utils.TestUtil;
 
 @RunWith(Parameterized.class)
@@ -32,7 +37,7 @@ public class BigCacheReadWriteStressTest {
 
 	@Parameters
 	public static Collection<StorageMode[]> data() throws IOException {
-		StorageMode[][] data = { { StorageMode.PureFile },
+		StorageMode[][] data = { //{ StorageMode.PureFile },
 				{ StorageMode.MemoryMappedPlusFile },
 				{ StorageMode.OffHeapPlusFile } };
 		return Arrays.asList(data);
@@ -142,6 +147,60 @@ public class BigCacheReadWriteStressTest {
 		for (String k : keys) {
 			assertNull(cache.get(k));
 		}
+	}
+
+	@Test
+	public void testMultiThreadWriteTtl_two_million() throws InterruptedException, ExecutionException, IOException {
+		final int count = 2 * 1000 * 1000;
+		final int threadCount = 16;
+		ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+		CacheConfig config = new CacheConfig();
+		config.setStorageMode(storageMode)
+				.setCapacityPerBlock(20 * 1024 * 1024)
+				.setMergeInterval(2 * 1000)
+				.setPurgeInterval(2 * 1000);
+		cache = new BigCache<String>(TEST_DIR, config);
+
+		long start = System.nanoTime();
+		List<Future<?>> futures = new ArrayList<Future<?>>();
+		for (int i = 0; i < threadCount; i++) {
+			final int finalI = i;
+			futures.add(service.submit(new Runnable() {
+
+				@Override
+				public void run() {
+					try {
+						final TestSample sample = new TestSample();
+						StringBuilder user = new StringBuilder();
+						for (int j = finalI; j < count; j += threadCount) {
+							sample.intA = j;
+							sample.doubleA = j;
+							sample.longA = j;
+							cache.put(TestSample.users(user, j), sample.toBytes(), 2 * 1000);
+						}
+						Thread.sleep(10 * 1000);
+						for (int j = finalI; j < count; j += threadCount) {
+							assertNull(cache.get(TestSample.users(user, j)));
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+
+			}));
+		}
+
+		for (Future<?> future : futures) {
+			future.get();
+		}
+
+		long duration = System.nanoTime() - start;
+		System.out.printf("Put/get %,d K operations per second%n",
+				(int) (count * 4 * 1e6 / duration));
+		service.shutdown();
 	}
 
 	@After
