@@ -77,7 +77,7 @@ public class BigCacheStressTest {
 				long end = System.currentTimeMillis();
 				System.out.println("timeSpent = " + (end - start));
 				System.out.println("ttl count = " + (cache.count() - map.size()));
-				System.out.println("used size = " + cache.getUsed());
+				System.out.println("used size = " + cache.getStats().getSize());
 
 				// validation
 				for (int i = 0; i < numKeyLimit; i++) {
