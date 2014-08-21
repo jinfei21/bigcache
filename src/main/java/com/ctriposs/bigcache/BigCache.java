@@ -45,17 +45,29 @@ public class BigCache<K> implements ICache<K> {
     /** The length of value can't be greater than 4m */
     public static final int MAX_VALUE_LENGTH = 4 * 1024 * 1024;
 
-	/** The hit. */
-	protected AtomicLong hit = new AtomicLong();
+	/** The hit counter. */
+	protected AtomicLong hitCounter = new AtomicLong();
 
-	/** The miss. */
-	protected AtomicLong miss = new AtomicLong();
+	/** The miss counter. */
+	protected AtomicLong missCounter = new AtomicLong();
+
+    /** The get counter. */
+    protected AtomicLong getCounter = new AtomicLong();
+
+    /** The put counter. */
+    protected AtomicLong putCounter = new AtomicLong();
+
+    /** The delete counter. */
+    protected AtomicLong deleteCounter = new AtomicLong();
 
     /** The # of purges due to expiration. */
-    protected AtomicLong purge = new AtomicLong();
+    protected AtomicLong purgeCounter = new AtomicLong();
 
     /** The # of moves for dirty block recycle. */
-    protected AtomicLong move = new AtomicLong();
+    protected AtomicLong moveCounter = new AtomicLong();
+
+    /** The total storage size we have used, including the expired ones which are still in the pointermap */
+    protected AtomicLong usedSize = new AtomicLong();
 
 	/** The internal map. */
 	protected final ConcurrentMap<K, CacheValueWrapper> pointerMap = new ConcurrentHashMap<K, CacheValueWrapper>();
@@ -66,11 +78,11 @@ public class BigCache<K> implements ICache<K> {
 	/** The read write lock. */
 	private final StripedReadWriteLock readWriteLock;
 
-	/** The Constant NO_OF_CLEANINGS. */
-	private final AtomicLong NO_OF_CLEANINGS = new AtomicLong();
+	/** The times of merge procedure has run. */
+	private final AtomicLong NO_OF_MERGE_RUN = new AtomicLong();
 	
-	/** The Constant NO_OF_PURGES. */
-	private final AtomicLong NO_OF_PURGES = new AtomicLong();
+	/** the times of purge procedure has run. */
+	private final AtomicLong NO_OF_PURGE_RUN = new AtomicLong();
 	
 	/** The directory to store cached data */
 	private String cacheDir;
@@ -112,6 +124,7 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public void put(K key, byte[] value, long tti) throws IOException {
+        putCounter.incrementAndGet();
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
@@ -127,11 +140,14 @@ public class BigCache<K> implements ICache<K> {
 				pointer = storageManager.store(value);
 			} else {
                 // update and get the new storage
-				pointer = storageManager.update(wrapper.getPointer(), value);
+                Pointer oldPointer = wrapper.getPointer();
+				pointer = storageManager.update(oldPointer, value);
+                usedSize.addAndGet(oldPointer.getLength() * -1);
 			}
             wrapper.setPointer(pointer);
 			wrapper.setTimeToIdle(tti);
             wrapper.setLastAccessTime(System.currentTimeMillis());
+            usedSize.addAndGet(pointer.getLength());
 			pointerMap.put(key, wrapper);
 		} finally {
 			writeUnlock(key);
@@ -140,22 +156,24 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public byte[] get(K key) throws IOException {
+        getCounter.incrementAndGet();
 		readLock(key);
 		try {
 			CacheValueWrapper wrapper = pointerMap.get(key);
 
             if (wrapper == null) {
+                missCounter.incrementAndGet();
                 return null;
             }
 
             synchronized (wrapper) { // this object may be modified in move thread, use lock here
                 if (!wrapper.isExpired()) {
                     // access time updated, the following change will not be lost
-                    hit.incrementAndGet();
+                    hitCounter.incrementAndGet();
                     wrapper.setLastAccessTime(System.currentTimeMillis());
                     return storageManager.retrieve(wrapper.getPointer());
                 } else {
-                    miss.incrementAndGet();
+                    missCounter.incrementAndGet();
                     return null;
                 }
             }
@@ -167,12 +185,14 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public byte[] delete(K key) throws IOException {
+        deleteCounter.incrementAndGet();
 		writeLock(key);
 		try {
 			CacheValueWrapper wrapper = pointerMap.get(key);
 			if (wrapper != null) {
 				byte[] payload = storageManager.remove(wrapper.getPointer());
 				pointerMap.remove(key);
+                usedSize.addAndGet(payload.length * -1);
 				return payload;
 			}
 		} finally {
@@ -207,17 +227,9 @@ public class BigCache<K> implements ICache<K> {
 
 	@Override
 	public double hitRatio() {
-		return 1.0 * hit.get() / (hit.get() + miss.get());
+		return 1.0 * hitCounter.get() / (hitCounter.get() + missCounter.get());
 	}
 
-    public long getPurgeCount() {
-        return purge.get();
-    }
-
-    public long getMoveCount() {
-        return move.get();
-    }
-	
 	/**
 	 * Read Lock for key is locked.
 	 * 
@@ -275,24 +287,14 @@ public class BigCache<K> implements ICache<K> {
 	}
 
     /**
-     * Get the total usage of all the entries, without considering of expiration.
+     * Get the latest stats of the cache.
      *
-     * This should be done by a single thread, and other thread will be blocked. So
-     * this function should only be used in test.
-     *
-     * @return the total usage.
+     * @return all stats.
      */
-    public long getUsed() {
-        readWriteLock.writeLockForAll();
-        try {
-            long result = 0;
-            for (CacheValueWrapper wrapper : pointerMap.values()) {
-                result += wrapper.getPointer().getLength();
-            }
-            return result;
-        } finally {
-            readWriteLock.writeUnlockForAll();
-        }
+    public BigCacheStats getStats() {
+        return new BigCacheStats(hitCounter.get(), missCounter.get(), getCounter.get(),
+                putCounter.get(), deleteCounter.get(), purgeCounter.get(), moveCounter.get(),
+                usedSize.get());
     }
 
     abstract static class CacheDaemonWorker<K> implements Runnable {
@@ -370,16 +372,18 @@ public class BigCache<K> implements ICache<K> {
                     for(K key : keyList) {
                         CacheValueWrapper wrapper = cache.pointerMap.get(key);
                         if (wrapper != null && wrapper.isExpired()) { // double check
-                            cache.storageManager.removeLight(wrapper.getPointer());
+                            Pointer oldPointer = wrapper.getPointer();
+                            cache.storageManager.removeLight(oldPointer);
                             cache.pointerMap.remove(key);
-                            cache.purge.incrementAndGet();
+                            cache.purgeCounter.incrementAndGet();
+                            cache.usedSize.addAndGet(oldPointer.getLength() * -1);
                         }
                     }
                 } finally {
                     lock.writeLock().unlock();
                 }
             }
-            cache.NO_OF_PURGES.incrementAndGet();
+            cache.NO_OF_PURGE_RUN.incrementAndGet();
         }
     }
 
@@ -435,7 +439,7 @@ public class BigCache<K> implements ICache<K> {
                                 byte[] payload = cache.storageManager.remove(wrapper.getPointer());
                                 Pointer newPointer = cache.storageManager.storeExcluding(payload, sb);
                                 wrapper.setPointer(newPointer);
-                                cache.move.incrementAndGet();
+                                cache.moveCounter.incrementAndGet();
                             }
                         }
                     } finally {
@@ -443,7 +447,7 @@ public class BigCache<K> implements ICache<K> {
                     }
                 }
             }
-
+            cache.NO_OF_MERGE_RUN.incrementAndGet();
         }
     }
 }

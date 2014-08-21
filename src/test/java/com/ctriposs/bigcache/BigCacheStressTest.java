@@ -56,9 +56,23 @@ public class BigCacheStressTest {
 			cache.put(counter + "-ttl", rndBytes, (long) 10 * 1000);
 
 			if (counter % 1000000 == 0) {
-				System.out.println("Current date " + new Date());
-				System.out.println("" + counter);
-				System.out.println(TestUtil.printMemoryFootprint());
+				System.out.println("Current date: " + new Date());
+				System.out.println("counter:      " + counter);
+                System.out.println("purge:        " + cache.getStats().getExpireCount());
+                System.out.println("move:         " + cache.getStats().getMoveCount());
+                System.out.println("size:        " + cache.count());
+                long cacheUsed = cache.getStats().getSize();
+                System.out.println("used:         " + cacheUsed);
+                System.out.println();
+
+                long storeUsed = cache.storageManager.getUsed();
+                if (cacheUsed != storeUsed) {
+                    System.out.println("!!!! Temporarily fail the test, this could seldom occur");
+                    System.out.println("storage used: " + storeUsed + ", but cache used: " + cacheUsed);
+                }
+
+                System.out.println();
+                System.out.println(TestUtil.printMemoryFootprint());
 				long end = System.currentTimeMillis();
 				System.out.println("timeSpent = " + (end - start));
 				// validation
@@ -81,8 +95,10 @@ public class BigCacheStressTest {
 						}
 					}
 				}
-				//exclude validation process from time count
-				start = System.currentTimeMillis();
+
+
+                //exclude validation process from time count
+                start = System.currentTimeMillis();
 			}
 		}
 	}
