@@ -172,7 +172,7 @@ public class StorageManager implements IStorageBlock {
 		if (updatePointer != null) {
 			return updatePointer;
 		}
-		return pointer.copy(store(payload));
+		return store(payload);
 	}
 
 	@Override

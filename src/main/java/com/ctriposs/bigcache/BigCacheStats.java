@@ -32,6 +32,38 @@ public class BigCacheStats {
         this(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
     }
 
+    public BigCacheStats minus(BigCacheStats other) {
+        if (other == null)
+            return this;
+
+        return new BigCacheStats(
+                this.hitCount - other.hitCount,
+                this.missCount - other.missCount,
+                this.getCount - other.getCount,
+                this.putCount - other.putCount,
+                this.deleteCount - other.deleteCount,
+                this.expireCount - other.expireCount,
+                this.moveCount - other.moveCount,
+                this.size - other.size
+        );
+    }
+
+    public BigCacheStats plus(BigCacheStats other) {
+        if (other == null)
+            return this;
+
+        return new BigCacheStats(
+                this.hitCount + other.hitCount,
+                this.missCount + other.missCount,
+                this.getCount + other.getCount,
+                this.putCount + other.putCount,
+                this.deleteCount + other.deleteCount,
+                this.expireCount + other.expireCount,
+                this.moveCount + other.moveCount,
+                this.size + other.size
+        );
+    }
+
     public long getHitCount() {
         return hitCount;
     }

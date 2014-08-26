@@ -132,23 +132,23 @@ public class BigCache<K> implements ICache<K> {
 		writeLock(key);
 		try {
 			CacheValueWrapper wrapper = pointerMap.get(key);
-            Pointer pointer; // pointer with new storage info
+            Pointer newPointer; // pointer with new storage info
 
 			if (wrapper == null) {
                 // create a new one
                 wrapper = new CacheValueWrapper();
-				pointer = storageManager.store(value);
+				newPointer = storageManager.store(value);
 			} else {
                 // update and get the new storage
                 Pointer oldPointer = wrapper.getPointer();
-				pointer = storageManager.update(oldPointer, value);
+				newPointer = storageManager.update(oldPointer, value);
                 usedSize.addAndGet(oldPointer.getLength() * -1);
 			}
-            wrapper.setPointer(pointer);
+            wrapper.setPointer(newPointer);
 			wrapper.setTimeToIdle(tti);
             wrapper.setLastAccessTime(System.currentTimeMillis());
-            usedSize.addAndGet(pointer.getLength());
-			pointerMap.put(key, wrapper);
+            usedSize.addAndGet(newPointer.getLength());
+            pointerMap.put(key, wrapper);
 		} finally {
 			writeUnlock(key);
 		}
@@ -223,6 +223,7 @@ public class BigCache<K> implements ICache<K> {
          * not see this if they behave right.
          */
         this.pointerMap.clear();
+        this.usedSize.set(0);
 	}
 
 	@Override
@@ -373,10 +374,10 @@ public class BigCache<K> implements ICache<K> {
                         CacheValueWrapper wrapper = cache.pointerMap.get(key);
                         if (wrapper != null && wrapper.isExpired()) { // double check
                             Pointer oldPointer = wrapper.getPointer();
+                            cache.usedSize.addAndGet(oldPointer.getLength() * -1);
                             cache.storageManager.removeLight(oldPointer);
                             cache.pointerMap.remove(key);
                             cache.purgeCounter.incrementAndGet();
-                            cache.usedSize.addAndGet(oldPointer.getLength() * -1);
                         }
                     }
                 } finally {
