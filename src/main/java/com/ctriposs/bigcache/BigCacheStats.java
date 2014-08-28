@@ -15,9 +15,10 @@ public class BigCacheStats {
     private final long moveCount;
 
     private final long size;
+    private final long count;
 
     public BigCacheStats(long hitCount, long missCount, long getCount, long putCount, long deleteCount, long expireCount,
-                         long moveCount, long size) {
+                         long moveCount, long count, long size) {
         this.hitCount = hitCount;
         this.missCount = missCount;
         this.getCount = getCount;
@@ -25,11 +26,12 @@ public class BigCacheStats {
         this.deleteCount = deleteCount;
         this.expireCount = expireCount;
         this.moveCount = moveCount;
+        this.count = count;
         this.size = size;
     }
 
     public BigCacheStats() {
-        this(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        this(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
     }
 
     public BigCacheStats minus(BigCacheStats other) {
@@ -44,6 +46,7 @@ public class BigCacheStats {
                 this.deleteCount - other.deleteCount,
                 this.expireCount - other.expireCount,
                 this.moveCount - other.moveCount,
+                this.count - other.count,
                 this.size - other.size
         );
     }
@@ -60,6 +63,7 @@ public class BigCacheStats {
                 this.deleteCount + other.deleteCount,
                 this.expireCount + other.expireCount,
                 this.moveCount + other.moveCount,
+                this.count - other.count,
                 this.size + other.size
         );
     }
@@ -90,6 +94,10 @@ public class BigCacheStats {
 
     public long getMoveCount() {
         return moveCount;
+    }
+
+    public long getCount() {
+        return count;
     }
 
     public long getSize() {
