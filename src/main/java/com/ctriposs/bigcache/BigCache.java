@@ -295,7 +295,9 @@ public class BigCache<K> implements ICache<K> {
     public BigCacheStats getStats() {
         return new BigCacheStats(hitCounter.get(), missCounter.get(), getCounter.get(),
                 putCounter.get(), deleteCounter.get(), purgeCounter.get(), moveCounter.get(),
-                count(), usedSize.get());
+                count(), storageManager.getUsed(), storageManager.getDirty(),
+                storageManager.getCapacity(), storageManager.getUsedBlockCount(), storageManager.getFreeBlockCount(),
+                storageManager.getTotalBlockCount());
     }
 
     abstract static class CacheDaemonWorker<K> implements Runnable {

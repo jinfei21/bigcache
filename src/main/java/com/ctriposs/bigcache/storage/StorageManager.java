@@ -289,7 +289,7 @@ public class StorageManager implements IStorageBlock {
 	}
 	
 	public int getTotalBlockCount() {
-		return this.getFreeBlockCount() + this.getUsedBlockCount();
+		return this.getAllInUsedBlocks().size();
 	}
 
 }

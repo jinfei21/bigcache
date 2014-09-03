@@ -59,10 +59,10 @@ public class BigCacheStressTest {
 			if (counter % 1000000 == 0) {
 				System.out.println("Current date: " + new Date());
 				System.out.println("counter:      " + counter);
-                System.out.println("purge:        " + cache.getStats().getExpireCount());
-                System.out.println("move:         " + cache.getStats().getMoveCount());
+                System.out.println("purge:        " + cache.getStats().getCacheExpire());
+                System.out.println("move:         " + cache.getStats().getCacheMove());
                 System.out.println("size:        " + cache.count());
-                long cacheUsed = cache.getStats().getSize();
+                long cacheUsed = cache.getStats().getStorageUsed();
                 System.out.println("used:         " + cacheUsed);
                 System.out.println();
 
@@ -77,7 +77,7 @@ public class BigCacheStressTest {
 				long end = System.currentTimeMillis();
 				System.out.println("timeSpent = " + (end - start));
 				System.out.println("ttl count = " + (cache.count() - map.size()));
-				System.out.println("used size = " + cache.getStats().getSize());
+				System.out.println("used size = " + cache.getStats().getStorageUsed());
 
 				// validation
 				for (int i = 0; i < numKeyLimit; i++) {

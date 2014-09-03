@@ -207,7 +207,7 @@ public class BigCacheCleanerTest {
         execute();
 
         TestUtil.sleepQuietly(30000); // wait for cleaner
-        assertEquals(count * 2, cache.getStats().getExpireCount());
+        assertEquals(count * 2, cache.getStats().getCacheExpire());
         assertEquals(0, cache.count());
     }
 
@@ -239,7 +239,7 @@ public class BigCacheCleanerTest {
 
         // The previous test is fast enough before the first run of cleaner
         TestUtil.sleepQuietly(30000); // wait for cleaner
-        assertEquals(count, cache.getStats().getMoveCount());
+        assertEquals(count, cache.getStats().getCacheMove());
     }
 
     /**
@@ -580,8 +580,8 @@ public class BigCacheCleanerTest {
         }
 
         System.out.println("cache hit ratio:" + cache.hitRatio());
-        System.out.println("purge count:" + cache.getStats().getExpireCount());
-        System.out.println("move count:" + cache.getStats().getMoveCount());
+        System.out.println("purge count:" + cache.getStats().getCacheExpire());
+        System.out.println("move count:" + cache.getStats().getCacheMove());
         System.out.println(TestUtil.printMemoryFootprint());
     }
 

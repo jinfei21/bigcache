@@ -4,103 +4,132 @@ package com.ctriposs.bigcache;
  * Created by wenlu on 2014/8/21.
  */
 public class BigCacheStats {
-    private final long hitCount;
-    private final long missCount;
+    private final long cacheHit;
+    private final long cacheMiss;
 
-    private final long getCount;
-    private final long putCount;
-    private final long deleteCount;
+    private final long cacheGet;
+    private final long cachePut;
+    private final long cacheDelete;
 
-    private final long expireCount;
-    private final long moveCount;
+    private final long cacheExpire;
+    private final long cacheMove;
+    private final long cacheTotalEntries;
 
-    private final long size;
-    private final long count;
+    private final long storageUsed;
+    private final long storageDirty;
+    private final long storageCapacity;
+    private final long storageUsedBlocks;
+    private final long storageFreeBlocks;
+    private final long storageTotalBlocks;
 
-    public BigCacheStats(long hitCount, long missCount, long getCount, long putCount, long deleteCount, long expireCount,
-                         long moveCount, long count, long size) {
-        this.hitCount = hitCount;
-        this.missCount = missCount;
-        this.getCount = getCount;
-        this.putCount = putCount;
-        this.deleteCount = deleteCount;
-        this.expireCount = expireCount;
-        this.moveCount = moveCount;
-        this.count = count;
-        this.size = size;
+    public BigCacheStats(long cacheHit, long cacheMiss, long cacheGet,
+                         long cachePut, long cacheDelete, long cacheExpire,
+                         long cacheMove, long cacheTotalEntries, long storageUsed,
+                         long storageDirty, long storageCapacity,
+                         long storageUsedBlocks, long storageFreeBlocks, long storageTotalBlocks) {
+        this.cacheHit = cacheHit;
+        this.cacheMiss = cacheMiss;
+
+        this.cacheGet = cacheGet;
+        this.cachePut = cachePut;
+        this.cacheDelete = cacheDelete;
+
+        this.cacheExpire = cacheExpire;
+        this.cacheMove = cacheMove;
+
+        this.cacheTotalEntries = cacheTotalEntries;
+
+        this.storageUsed = storageUsed;
+        this.storageDirty = storageDirty;
+        this.storageCapacity = storageCapacity;
+
+        this.storageUsedBlocks = storageUsedBlocks;
+        this.storageFreeBlocks = storageFreeBlocks;
+        this.storageTotalBlocks = storageTotalBlocks;
     }
 
     public BigCacheStats() {
-        this(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
+        this(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L);
     }
 
-    public BigCacheStats minus(BigCacheStats other) {
-        if (other == null)
+    public BigCacheStats getDeltaStats(BigCacheStats previousStats) {
+        if (previousStats == null) {
             return this;
-
+        }
         return new BigCacheStats(
-                this.hitCount - other.hitCount,
-                this.missCount - other.missCount,
-                this.getCount - other.getCount,
-                this.putCount - other.putCount,
-                this.deleteCount - other.deleteCount,
-                this.expireCount - other.expireCount,
-                this.moveCount - other.moveCount,
-                this.count - other.count,
-                this.size - other.size
+                /*$(current value - previous value): the delta between two adjacent stats*/
+                this.cacheHit - previousStats.cacheHit,
+                this.cacheMiss - previousStats.cacheMiss,
+                this.cacheGet - previousStats.cacheGet,
+                this.cachePut - previousStats.cachePut,
+                this.cacheDelete - previousStats.cacheDelete,
+                this.cacheExpire - previousStats.cacheExpire,
+                this.cacheMove - previousStats.cacheMove,
+
+                /*$(current value): latest value which is more meaningful*/
+                this.cacheTotalEntries,
+                this.storageUsed,
+                this.storageDirty,
+                this.storageCapacity,
+                this.storageUsedBlocks,
+                this.storageFreeBlocks,
+                this.storageTotalBlocks
         );
     }
 
-    public BigCacheStats plus(BigCacheStats other) {
-        if (other == null)
-            return this;
-
-        return new BigCacheStats(
-                this.hitCount + other.hitCount,
-                this.missCount + other.missCount,
-                this.getCount + other.getCount,
-                this.putCount + other.putCount,
-                this.deleteCount + other.deleteCount,
-                this.expireCount + other.expireCount,
-                this.moveCount + other.moveCount,
-                this.count - other.count,
-                this.size + other.size
-        );
+    public long getCacheHit() {
+        return cacheHit;
     }
 
-    public long getHitCount() {
-        return hitCount;
+    public long getCacheMiss() {
+        return cacheMiss;
     }
 
-    public long getMissCount() {
-        return missCount;
+    public long getCacheGet() {
+        return cacheGet;
     }
 
-    public long getGetCount() {
-        return getCount;
+    public long getCachePut() {
+        return cachePut;
     }
 
-    public long getPutCount() {
-        return putCount;
+    public long getCacheDelete() {
+        return cacheDelete;
     }
 
-    public long getDeleteCount() {
-        return deleteCount;
+    public long getCacheExpire() {
+        return cacheExpire;
     }
 
-    public long getExpireCount() {
-        return expireCount;
+    public long getCacheMove() {
+        return cacheMove;
     }
 
-    public long getMoveCount() {
-        return moveCount;
+    public long getCacheTotalEntries() {
+        return cacheTotalEntries;
     }
 
-    public long getCount() {
-        return count;
+    public long getStorageUsed() {
+        return storageUsed;
     }
 
-    public long getSize() {
-        return size;
+    public long getStorageDirty() {
+        return storageDirty;
+    }
+
+    public long getStorageCapacity() {
+        return storageCapacity;
+    }
+
+    public long getStorageUsedBlocks() {
+        return storageUsedBlocks;
+    }
+
+    public long getStorageFreeBlocks() {
+        return storageFreeBlocks;
+    }
+
+    public long getStorageTotalBlocks() {
+        return storageTotalBlocks;
     }
 }
