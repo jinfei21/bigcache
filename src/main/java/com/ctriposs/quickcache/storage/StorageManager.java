@@ -3,6 +3,7 @@ package com.ctriposs.quickcache.storage;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -15,7 +16,7 @@ import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import com.ctriposs.quickcache.IBlock;
 import com.ctriposs.quickcache.utils.FileUtil;
 
-public class StorageManager implements IBlock{
+public class StorageManager{
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
@@ -72,9 +73,12 @@ public class StorageManager implements IBlock{
 	 */
 	private final int capacityPerBlock;
 	
+	/** dirty ratio which controls block recycle */
+    private final double dirtyRatioThreshold;
+	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
-			long maxOffHeapMemorySize) throws IOException {
+			long maxOffHeapMemorySize,double dirtyRatioThreshold) throws IOException {
 		
 		//TODO recovery from file
 		// clean up old cache data if exists
@@ -98,7 +102,8 @@ public class StorageManager implements IBlock{
 		
 		this.blockCount.set(initialNumberOfBlocks);
 		this.activeBlock = freeBlocks.poll();
-	
+		this.activeBlock.active();
+		this.dirtyRatioThreshold = dirtyRatioThreshold;
 	}
 	
 	private IBlock createNewBlock(int index) throws IOException {
@@ -112,7 +117,6 @@ public class StorageManager implements IBlock{
 	}
 
 
-	@Override
 	public void close() throws IOException {
 		for(IBlock usedBlock : usedBlocks) {
 			usedBlock.close();
@@ -122,28 +126,46 @@ public class StorageManager implements IBlock{
 			freeBlock.close();
 		}
         freeBlocks.clear();
-		
+		activeBlock.close();
+	}
+	
+	public void clean() {
+        synchronized (this) {
+            Iterator<IBlock> it = usedBlocks.iterator();
+            while(it.hasNext()) {
+                IBlock storageBlock = it.next();
+                if (storageBlock.getUsed() == 0) {
+                    // we will not allocating memory from it any more and it is used by nobody.
+                    storageBlock.free();
+                    freeBlocks.add(storageBlock);
+                    it.remove();
+                }
+            }
+        }
 	}
 
-	@Override
-	public Pointer store(byte[] key,byte[] payload,long ttl) throws IOException {
-		Pointer pointer = activeBlock.store(key,payload,ttl);
+	
+	public Pointer store(byte[] key,byte[] value,long ttl) throws IOException {
+		Pointer pointer = activeBlock.store(key,value,ttl);
 		if (pointer != null) {// success
 			return pointer; 
 		}else { // overflow
 			activeBlockChangeLock.lock(); 
 			try {
 				// other thread may have changed the active block
-				pointer = activeBlock.store(key,payload,ttl);
-				if (pointer != null) return pointer; // success
-				else { // still overflow
+				pointer = activeBlock.store(key,value,ttl);
+				if (pointer != null) {// success
+					return pointer; 
+				} else { // still overflow
 					IBlock freeBlock = this.freeBlocks.poll();
 					if (freeBlock == null) { // create a new one
-						freeBlock = this.createNewBlock(this.blockCount.getAndIncrement());
+						freeBlock = createNewBlock(this.blockCount.getAndIncrement());
 					}
-					pointer = freeBlock.store(key,payload,ttl);
-					this.activeBlock = freeBlock;
+					pointer = freeBlock.store(key,value,ttl);
 					this.usedBlocks.add(this.activeBlock);
+					this.activeBlock.deactive();
+					this.activeBlock = freeBlock;
+					this.activeBlock.active();
 					return pointer;
 				}
 				
@@ -154,47 +176,23 @@ public class StorageManager implements IBlock{
 	}
 
 
-	@Override
-	public byte[] retrieve(Pointer pointer) throws IOException {
-		
-		return null;
+
+	public byte[] retrieve(Pointer pointer) throws IOException {		
+		return pointer.getBlock().retrieve(pointer);
 	}
 
-
-	@Override
+	
 	public byte[] remove(Pointer pointer) throws IOException {
 
-
-		return null;
+		return pointer.getBlock().remove(pointer);
 	}
 
-
-
-
-	@Override
-	public void removeLight(Pointer pointer) throws IOException {
-
-
-		
-	}
-
-
-
-	@Override
-	public Pointer update(Pointer pointer, byte[] payload) throws IOException {
-
-
-		return null;
-	}
-
-
-	@Override
+	
 	public int markDirty(Pointer pointer) throws IOException {
-		// TODO Auto-generated method stub
-		return 0;
+		return pointer.getBlock().markDirty(pointer);
 	}
 
-	@Override
+
 	public long getUsed() {
 		long usedStorage = 0;
 		for(IBlock block : usedBlocks) {
@@ -203,7 +201,6 @@ public class StorageManager implements IBlock{
 		return usedStorage;
 	}
 
-	@Override
 	public void free() {
 		for(IBlock storageBlock : usedBlocks) {
 			storageBlock.free();
@@ -211,9 +208,9 @@ public class StorageManager implements IBlock{
 		}
 		usedBlocks.clear();
 		this.activeBlock.free();
+		this.freeBlocks.offer(activeBlock);
 	}
-	
-	@Override
+
 	public long getDirty() {
 		long dirtyStorage = 0;
 		for(IBlock block : usedBlocks) {
@@ -222,27 +219,26 @@ public class StorageManager implements IBlock{
 		return dirtyStorage + activeBlock.getDirty();
 	}
 
-	@Override
+
 	public long getCapacity() {
         long totalCapacity = 0;
-        for(IBlock block : getAllInUsedBlocks()) {
+        for(IBlock block : getAllBlocks()) {
             totalCapacity += block.getCapacity();
         }
 		return totalCapacity;
 	}
 
-	@Override
+
 	public double getDirtyRatio() {
 		return (getDirty() * 1.0) / getCapacity();
 	}
 
 
-	@Override
 	public int getIndex() {
 		throw new IllegalStateException("Not implemented!");
 	}
 
-	@Override
+
 	public int compareTo(IBlock o) {
 		throw new IllegalStateException("Not implemented!");
 	}
@@ -256,16 +252,36 @@ public class StorageManager implements IBlock{
 		return usedBlocks.size()+1;
 	}
 	
-    private Set<IBlock> getAllInUsedBlocks() {
+    private Set<IBlock> getAllBlocks() {
         Set<IBlock> allBlocks = new HashSet<IBlock>();
         allBlocks.addAll(usedBlocks);
         allBlocks.addAll(freeBlocks);
         allBlocks.add(activeBlock);
         return allBlocks;
     }
+    
+    public Set<IBlock> getDirtyBlocks(){
+		Set<IBlock> set = new HashSet<IBlock>();
+		for(IBlock block:usedBlocks) {
+			if(dirtyRatioThreshold < block.getDirtyRatio()) {
+				set.add(block);
+			}
+		}
+		return set;
+    }
+    
+    public void clearUseBlocks() {
+		for(IBlock block:usedBlocks) {
+			if(dirtyRatioThreshold < block.getDirtyRatio()) {
+				usedBlocks.remove(block);
+				block.free();
+				freeBlocks.add(block);
+			}
+		}
+    }
 	
 	public int getTotalBlockCount() {
-		return getAllInUsedBlocks().size();
+		return getAllBlocks().size();
 	}
-	
+
 }

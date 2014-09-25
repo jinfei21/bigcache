@@ -1,12 +1,13 @@
 package com.ctriposs.quickcache;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 
 /**
  * The Interface IStorage for get/put cached data in bytes.
  */
-public interface IStorage {
+public interface IStorage  extends Closeable {
 	
 	public static final String DATA_FILE_SUFFIX = ".data";
 
@@ -25,6 +26,7 @@ public interface IStorage {
 	 * @param source the source
 	 */
 	void put(int position, byte[] source) throws IOException;
+	
 	
 	/**
 	 * Frees the storage.

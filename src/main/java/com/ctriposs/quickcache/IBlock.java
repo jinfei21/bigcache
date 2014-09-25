@@ -2,7 +2,10 @@ package com.ctriposs.quickcache;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 
+import com.ctriposs.quickcache.storage.Item;
+import com.ctriposs.quickcache.storage.Meta;
 import com.ctriposs.quickcache.storage.Pointer;
 
 public interface IBlock extends Comparable<IBlock>, Closeable {
@@ -15,6 +18,16 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
      */
     byte[] retrieve(Pointer pointer) throws IOException;
 
+	
+	/**
+	 * Stores the payload.
+	 *
+	 * @param payload the payload
+	 * @return the pointer
+	 * @throws IOException
+	 */
+	Pointer store(byte[] key,byte[] value,long ttl) throws IOException;
+	
 	/**
 	 * Removes the payload and marks the used space as dirty.
 	 *
@@ -25,33 +38,6 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	byte[] remove(Pointer pointer) throws IOException; 
 	
 	/**
-	 * Removes the payload without returning the payload
-	 * 
-	 * @param pointer the pointer
-	 * @throws IOException
-	 */
-	void removeLight(Pointer pointer) throws IOException;
-	
-	/**
-	 * Stores the payload.
-	 *
-	 * @param payload the payload
-	 * @return the pointer
-	 * @throws IOException
-	 */
-	Pointer store(byte[] key,byte[] payload,long ttl) throws IOException;
-	
-	/**
-	 * Updates the payload by marking exSpace as dirty.
-	 *
-	 * @param pointer the pointer
-	 * @param payload the payload
-	 * @return the pointer
-	 * @throws IOException
-	 */
-	Pointer update(Pointer pointer, byte[] payload) throws IOException;
-	
-	/**
 	 *  Marks exSpace as dirty.
 	 * 
 	 * @param pointer the pointer
@@ -59,6 +45,21 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	 * @throws IOException
 	 */
 	int markDirty(Pointer pointer)throws IOException;
+	
+	/**
+	 * Get all valid meta of this storage block
+	 * 
+	 * @return count
+	 */
+	List<Meta> getAllValidMeta()throws IOException; 
+	
+	
+	/**
+	 * Get item for this meta in this storage block
+	 * 
+	 * @return item
+	 */
+	Item readItem(Meta meta)throws IOException; 
 	
 	/**
 	 * Calculates and returns total size of the dirty space.
@@ -99,5 +100,21 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	 * Frees the storage.
 	 */
 	void free();
-
+	
+	/**
+	 * Get meta count of this storage block
+	 * 
+	 * @return count
+	 */
+	int getMetaCount();
+	
+	/**
+	 * Active the storage.
+	 */
+	void active();
+	
+	/**
+	 * Deactive the storage.
+	 */
+	void deactive();
 }

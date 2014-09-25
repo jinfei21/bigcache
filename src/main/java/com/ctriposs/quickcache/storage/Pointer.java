@@ -5,12 +5,15 @@ import com.ctriposs.quickcache.IBlock;
 public class Pointer {
 
 	private IBlock block;
-	private int metaIndex;
-	private long lastAccessTime = -1; // -1 means for not initialized.
+	private int metaOffset;
+	private long lastAccessTime = -1; // -1 means for delete.
 	private long ttl = -1L;			  // -1 means for never expire.
 	
-	public Pointer() {
-		
+	public Pointer(IBlock block,int metaOffset,long ttl) {
+		this.block = block;
+		this.metaOffset = metaOffset;
+		this.ttl = ttl;
+		this.lastAccessTime = System.currentTimeMillis();
 	}
 
 
@@ -22,20 +25,20 @@ public class Pointer {
 		this.block = block;
 	}
 
-	public int getMetaIndex() {
-		return metaIndex;
+	public int getMetaOffset() {
+		return metaOffset;
 	}
 
-	public void setMetaIndex(int metaIndex) {
-		this.metaIndex = metaIndex;
+	public void setMetaOffset(int metaOffset) {
+		this.metaOffset = metaOffset;
 	}
 
-	public long getCreateTime() {
+	public long getLastAccessTime() {
 		return lastAccessTime;
 	}
 
-	public void setCreateTime(long createTime) {
-		this.lastAccessTime = createTime;
+	public void setLastAccessTime(long lastAccessTime) {
+		this.lastAccessTime = lastAccessTime;
 	}
 
 	public long getTtl() {

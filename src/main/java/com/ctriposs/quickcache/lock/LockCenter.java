@@ -27,11 +27,11 @@ public class LockCenter {
 		this.expireActive.compareAndSet(true, false);
 	}
 	
-	public void activeMove() {
+	public void activeMigrate() {
 		this.migrateActive.compareAndSet(false, true);
 	}
 	
-	public void releaseMove() {
+	public void releaseMigrate() {
 		this.migrateActive.compareAndSet(true, false);
 	}
 	
@@ -54,5 +54,13 @@ public class LockCenter {
 	
 	public void registerMigrateLock(int id,ReentrantReadWriteLock lock) {
 		this.migrateLock.put(id, lock);
+	}
+	
+	public void unregisterMigrateLock(int id) {
+		this.migrateLock.remove(id);
+	}
+	
+	public void unregisterExpireLock(int id) {
+		this.exipreLock.remove(id);
 	}
 }

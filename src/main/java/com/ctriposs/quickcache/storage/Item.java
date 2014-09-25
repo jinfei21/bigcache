@@ -2,6 +2,8 @@ package com.ctriposs.quickcache.storage;
 
 public class Item {
 	
+	public static final int VALUE_SIZE_OFFSET = 0;
+	public static final int KEY_AREA_OFFSET = 4;
 	private byte[] key;
 	private int valueSize;
 	private byte[] value;
@@ -10,6 +12,12 @@ public class Item {
 		this.key = key;
 		this.value = value;
 		this.valueSize = value.length;
+	}
+	
+	public Item() {
+		this.key = null;
+		this.value = null;
+		this.valueSize = 0;
 	}
 
 	public byte[] getKey() {
