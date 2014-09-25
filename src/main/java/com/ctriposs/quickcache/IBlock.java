@@ -22,7 +22,7 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	/**
 	 * Stores the payload.
 	 *
-	 * @param payload the payload
+	 * @param key the key
 	 * @return the pointer
 	 * @throws IOException
 	 */

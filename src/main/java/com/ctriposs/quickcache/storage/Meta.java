@@ -4,7 +4,7 @@ import java.io.Serializable;
 
 public class Meta implements Serializable{
 
-	public static final int META_SIZE = (Integer.SIZE+Integer.SIZE+Long.SIZE+Long.SIZE)/Byte.SIZE;
+	public static final int META_SIZE = (Integer.SIZE + Integer.SIZE + Long.SIZE + Long.SIZE)/Byte.SIZE;
 	public static final int KEY_OFFSET = 0;
 	public static final int KEY_SIZE_OFFSET = 4;
 	public static final int LAST_ACCESS_OFFSET = 8;

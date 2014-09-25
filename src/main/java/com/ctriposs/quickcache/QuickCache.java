@@ -231,7 +231,6 @@ public class QuickCache<K> implements ICache<K> {
 						pointerMap.put(wKey, pointer);						
 					}
 				}
-
 			}else {
 
 				oldPointer = pointerMap.get(wKey);
@@ -265,7 +264,6 @@ public class QuickCache<K> implements ICache<K> {
 		} else if(key instanceof String){
 			return ((String) key).getBytes();
 		}else {
-		
 			try {
 				ByteArrayOutputStream byteOut = new ByteArrayOutputStream(); 
 				ObjectOutputStream objectOut = new ObjectOutputStream(byteOut);
@@ -273,8 +271,10 @@ public class QuickCache<K> implements ICache<K> {
 				return byteOut.toByteArray();
 			} catch (IOException e) {
 				throw e;
-			}
-		}
+			} finally {
+
+            }
+        }
 	}
 
 	@Override
@@ -344,7 +344,7 @@ public class QuickCache<K> implements ICache<K> {
 			public void process(QuickCache<K> cache) {
 
 				migrateCounter.incrementAndGet();
-				for(IBlock block:cache.storageManager.getDirtyBlocks()) {
+				for(IBlock block : cache.storageManager.getDirtyBlocks()) {
 					try {
 						cache.lockCenter.activeMigrate();
 						for(Meta meta : block.getAllValidMeta()) {
