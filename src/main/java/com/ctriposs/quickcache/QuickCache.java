@@ -227,13 +227,14 @@ public class QuickCache<K> implements ICache<K> {
 					if(checkPointer != null) {
 						int size = storageManager.markDirty(checkPointer);
 						usedSize.addAndGet(size * -1);
-						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
+						Pointer pointer = storageManager.store(wKey.getKey(), value, ttl);
 						pointerMap.put(wKey, pointer);						
 					}
 				}
-			}else {
+			} else {
 				oldPointer = pointerMap.get(wKey);
 				if(oldPointer == null) {
+                    //TODO:MAYBE DIRTY MEMORY NOT MARKED
 					Pointer	pointer = storageManager.store(wKey.getKey(),value,ttl);
 					pointerMap.put(wKey, pointer);	
 				}else {
@@ -245,7 +246,7 @@ public class QuickCache<K> implements ICache<K> {
 					}
 				}
 			}
-			usedSize.addAndGet((wKey.getKey().length+4+value.length) * -1);
+			usedSize.addAndGet((wKey.getKey().length + 4 + value.length) * -1);
 		}finally {
 			if(expireLock != null) {
 				expireLock.readLock().unlock();
