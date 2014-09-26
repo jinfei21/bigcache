@@ -2,7 +2,8 @@ package com.ctriposs.quickcache.storage;
 
 import java.io.Serializable;
 
-public class Meta implements Serializable{
+public class Meta implements Serializable {
+
 	public static final int DEFAULT_META_AREA_SIZE = 4 * 1024 * 1024; // 4M
 	public static final int META_SIZE = (Integer.SIZE+Integer.SIZE+Integer.SIZE+Long.SIZE+Long.SIZE)/Byte.SIZE;
 	public static final int KEY_OFFSET = 0;
@@ -18,6 +19,7 @@ public class Meta implements Serializable{
 	private long lastAccessTime;
 	private long ttl;//-1 means never expire;0 means delete
 	private int index = -1;//-1 means invalid
+
 	public Meta() {
 		this.keyOffSet = 0;
 		this.keySize = 0;

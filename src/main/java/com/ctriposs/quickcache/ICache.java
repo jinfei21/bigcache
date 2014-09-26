@@ -27,7 +27,7 @@ public interface ICache<K> extends Closeable {
 	 * @param ttl the time to idle value in milliseconds
 	 * @throws IOException
 	 */
-	void put(K key, byte[] value, long tti)  throws IOException;
+	void put(K key, byte[] value, long ttl)  throws IOException;
 
 	/**
 	 * Gets the value with the specified key.
