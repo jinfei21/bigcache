@@ -39,6 +39,13 @@ public class LockCenter {
 		return this.expireActive.get()||this.migrateActive.get();
 	}
 	
+	public boolean isExpireActive() {
+		return this.expireActive.get();
+	}
+	
+	public boolean isMigrateActive() {
+		return this.migrateActive.get();
+	}
 	
 	public ReentrantReadWriteLock getExpireLock(int id) {
 		return this.exipreLock.get(id);

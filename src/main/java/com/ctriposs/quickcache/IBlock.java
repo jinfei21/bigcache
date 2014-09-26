@@ -22,7 +22,7 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	/**
 	 * Stores the payload.
 	 *
-	 * @param key the key
+	 * @param payload the payload
 	 * @return the pointer
 	 * @throws IOException
 	 */
@@ -42,9 +42,8 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	 * 
 	 * @param pointer the pointer
 	 * @return space size for pointer
-	 * @throws IOException
 	 */
-	int markDirty(Pointer pointer)throws IOException;
+	int markDirty(Pointer pointer);
 	
 	/**
 	 * Get all valid meta of this storage block
@@ -114,7 +113,7 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	void active();
 	
 	/**
-	 * Deactive the storage.
+	 * Used the storage.
 	 */
-	void deactive();
+	void used();
 }

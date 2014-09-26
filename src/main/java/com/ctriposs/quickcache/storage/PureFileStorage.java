@@ -22,6 +22,12 @@ public class PureFileStorage implements IStorage {
 		fileChannel = raf.getChannel();
 	}
 
+	public PureFileStorage(File file, int capacity) throws IOException {
+		raf = new RandomAccessFile(file, "rw");
+		raf.setLength(capacity);
+		fileChannel = raf.getChannel();
+	}
+	
 	@Override
 	public void get(int position, byte[] dest) throws IOException {
 		fileChannel.read(ByteBuffer.wrap(dest), position);

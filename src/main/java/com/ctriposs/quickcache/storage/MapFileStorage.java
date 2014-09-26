@@ -24,6 +24,12 @@ public class MapFileStorage implements IStorage {
 		MappedByteBuffer mappedByteBuffer = raf.getChannel().map(FileChannel.MapMode.PRIVATE, 0, capacity);
 		threadLocalBuffer = new ThreadLocalByteBuffer(mappedByteBuffer);
 	}
+	
+	public MapFileStorage(File file, int capacity) throws IOException {
+		raf = new RandomAccessFile(file, "rw");
+		MappedByteBuffer mappedByteBuffer = raf.getChannel().map(FileChannel.MapMode.PRIVATE, 0, capacity);
+		threadLocalBuffer = new ThreadLocalByteBuffer(mappedByteBuffer);
+	}
 
 	private ByteBuffer getLocal(int position) {
 		ByteBuffer buffer = threadLocalBuffer.get();

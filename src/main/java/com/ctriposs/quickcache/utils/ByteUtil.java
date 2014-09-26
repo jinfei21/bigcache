@@ -10,6 +10,12 @@ public class ByteUtil {
 		bytes[0] = (byte) (n >> 24 & 0xff);
 		return bytes;
 	}
+	
+	public static byte[] toByte(byte b) {
+		byte[] bytes = new byte[1];
+		bytes[0] = b;
+		return bytes;
+	}
 
 	public static byte[] toBytes(long n) {
 

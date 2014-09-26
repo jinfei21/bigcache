@@ -4,30 +4,54 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Head {
 	
-	public static final int HEAD_SIZE = (Integer.SIZE + Byte.SIZE)/Byte.SIZE;
+	public static final int HEAD_SIZE = (Byte.SIZE+Integer.SIZE)/Byte.SIZE;
 	public static final byte FLAG_ACTIVE = 1;
-	public static final byte FLAG_DEACTIVE = 0;
-	public static final int ACTIVE_OFFSET = 0;
-	public static final int META_COUNT_OFFSET = 1;
+	public static final byte FLAG_USED = 2;
+	public static final byte FLAG_FREE = 0;
+	public static final int FLAG_OFFSET=0;
+	public static final int META_COUNT_OFFSET=1;
 	
-	private byte activeFlag;    // 1 means active; 0 means used;
-	private AtomicInteger metaCount;
+	private byte activeFlag;//1 means active;2 means used;0 means free
+	
+	/** The current meta count*/
+	private final AtomicInteger metaCount = new AtomicInteger(0);
+	
+	/** The item offset within the storage block. */
+	private final AtomicInteger currentItemOffset = new AtomicInteger(0);
+	
+	/** The meta offset within the storage block. */
+	private final AtomicInteger currentMetaOffset = new AtomicInteger(0);
 	
 	public Head() {
-		this.activeFlag = FLAG_ACTIVE;
-		this.metaCount = new AtomicInteger(0);
+		this.activeFlag = FLAG_FREE;
 	}
 	
-	public Head(final byte activeFlag) {
+	public Head(byte activeFlag,int metaCount) {
 		this.activeFlag = activeFlag;
-		this.metaCount = new AtomicInteger(0);
+		this.metaCount.set(metaCount);
 	}
 	
 	public byte getActiveFlag() {
 		return activeFlag;
 	}
 
-	public void setActiveFlag(final byte activeFlag) {
+	public int addAndGetCurrentItemOffset(int delta) {
+		return this.currentItemOffset.addAndGet(delta);
+	}
+	
+	public int addAndGetCurrentMetaOffset(int delta) {
+		return this.currentMetaOffset.addAndGet(delta);
+	}
+	
+	public void setCurrentItemOffset(int value) {
+		this.currentItemOffset.set(value);
+	}
+	
+	public void setCurrentMetaOffset(int value) {
+		this.currentMetaOffset.set(value);
+	}
+	
+	public void setActiveFlag(byte activeFlag) {
 		this.activeFlag = activeFlag;
 	}
 	
@@ -40,7 +64,10 @@ public class Head {
 	}
 	
 	public void reset() {
-		this.metaCount.set(0);
+		activeFlag = FLAG_FREE;
+		currentMetaOffset.set(HEAD_SIZE);
+		currentItemOffset.set(HEAD_SIZE+Meta.DEFAULT_META_AREA_SIZE);
+		metaCount.set(0);
 	}
 	
 }

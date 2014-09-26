@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.lang.ref.WeakReference;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -21,8 +22,7 @@ import com.ctriposs.quickcache.storage.StorageManager;
 import com.ctriposs.quickcache.storage.WrapperKey;
 import com.ctriposs.quickcache.utils.FileUtil;
 
-
-public class QuickCache<K> implements ICache<K> {
+public class SimpleCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
 	public static final long DEFAULT_MIGRATE_INTERVAL = 10 * 60 * 1000;
@@ -56,9 +56,6 @@ public class QuickCache<K> implements ICache<K> {
 
     /** The # of expire due to expiration. */
     protected AtomicLong expireCounter = new AtomicLong();
-    
-    /** The # of expire due to expiration. */
-    protected AtomicLong expireErrorCounter = new AtomicLong();
 
     /** The # of migrate for dirty block recycle. */
     protected AtomicLong migrateCounter = new AtomicLong();
@@ -66,8 +63,6 @@ public class QuickCache<K> implements ICache<K> {
     /** The # of migrate for dirty block recycle. */
     protected AtomicLong migrateErrorCounter = new AtomicLong();
     
-    /**	The lock manager for key during expire or migrate */
-    protected LockCenter lockCenter = new LockCenter();
     
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
@@ -83,8 +78,9 @@ public class QuickCache<K> implements ICache<K> {
     
 	/** Managing the storages. */
 	private final StorageManager storageManager;
-    
-    public QuickCache(String dir, CacheConfig config) throws IOException {
+	
+	
+    public SimpleCache(String dir, CacheConfig config) throws IOException {
     	this.cacheDir = dir;
 		if (!this.cacheDir.endsWith(File.separator)) {
 			this.cacheDir += File.separator;
@@ -100,24 +96,26 @@ public class QuickCache<K> implements ICache<K> {
 												config.getStorageMode(), 
 												config.getMaxOffHeapMemorySize(),
 												config.getDirtyRatioThreshold());
+		
 		this.storageManager.loadPointerMap(pointerMap);
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
 		
     }
-
+	
     private void checkKey(K key) {
     	if(key == null) {
     		throw new IllegalArgumentException("key is null");
     	}
     }
-    
+
 	@Override
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();
 		checkKey(key);
 		WrapperKey wKey = new WrapperKey(ToBytes(key));
+
 		Pointer pointer = pointerMap.get(wKey);
 		if (pointer == null) {
 			missCounter.incrementAndGet();
@@ -135,58 +133,22 @@ public class QuickCache<K> implements ICache<K> {
 		}
 
 	}
-
+	
 	@Override
 	public byte[] delete(K key) throws IOException {
 		deleteCounter.incrementAndGet();
 		checkKey(key);
         WrapperKey wKey = new WrapperKey(ToBytes(key));
-		ReentrantReadWriteLock expireLock = null;
-		ReentrantReadWriteLock migrateLock = null;
-		if(lockCenter.isNeedLock()) {
-			expireLock = lockCenter.getExpireLock(wKey.hashCode());
-			migrateLock = lockCenter.getMigrateLock(wKey.hashCode());
-		}
-		
-		try {
-			
-			if(expireLock != null) {
-				expireLock.readLock().lock();
-			}
-			if(migrateLock != null) {
-				migrateLock.readLock().lock();
-			}
-			Pointer oldPointer = pointerMap.get(wKey);
-            if (oldPointer != null) {
-            	synchronized (oldPointer) {
-            		Pointer checkPointer = pointerMap.get(wKey);
-            		if(oldPointer==checkPointer) {
-	            		pointerMap.remove(wKey);
-						byte[] payload = storageManager.remove(oldPointer);
-		                usedSize.addAndGet(payload.length * -1);
-						return payload;
-            		}else if(checkPointer !=null) {
-	            		pointerMap.remove(wKey);
-						byte[] payload = storageManager.remove(checkPointer);
-		                usedSize.addAndGet(payload.length * -1);
-						return payload;
-            		}
-				}
-            }
-			
-		}finally {
-			if(expireLock != null) {
-				expireLock.readLock().unlock();
-			}
-			if(migrateLock != null) {
-				migrateLock.readLock().unlock();
-			}
+		Pointer oldPointer = pointerMap.remove(wKey);
+		if(oldPointer!=null) {
+			byte[] payload = storageManager.remove(oldPointer);
+            usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
+			return payload;
 		}
 		
 		return null;
 	}
-
-
+	
 	@Override
 	public void put(K key, byte[] value) throws IOException {
 		put(key, value, Meta.TTL_NEVER_EXPIRE); // -1 means no time to idle(never expires)
@@ -199,64 +161,34 @@ public class QuickCache<K> implements ICache<K> {
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
-        
         WrapperKey wKey = new WrapperKey(ToBytes(key));
-        
-		ReentrantReadWriteLock expireLock = null;
-		ReentrantReadWriteLock migrateLock = null;
-		if(lockCenter.isNeedLock()) {
-			expireLock = lockCenter.getExpireLock(wKey.hashCode());
-			migrateLock = lockCenter.getMigrateLock(wKey.hashCode());
-		}
-		
-		try {
-			if(expireLock != null) {
-				expireLock.readLock().lock();
-			}
-			if(migrateLock != null) {
-				migrateLock.readLock().lock();
-			}
-			Pointer oldPointer = pointerMap.get(wKey);
+   
+		Pointer oldPointer = pointerMap.get(wKey);
 			
-			if (oldPointer != null) {
-                // update and get the new storage
-				synchronized (oldPointer) {
-					Pointer checkPointer = pointerMap.get(wKey);
-					if(oldPointer!=checkPointer||checkPointer !=null) {
-						int size = storageManager.markDirty(checkPointer);
-						usedSize.addAndGet(size * -1);
-						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
-						pointerMap.put(wKey, pointer);						
-					}
-				}
-
+		if (oldPointer != null) {
+			Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+			if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+				storageManager.markDirty(oldPointer);
 			}else {
-
-				oldPointer = pointerMap.get(wKey);
-				if(oldPointer == null) {
-					Pointer	pointer = storageManager.store(wKey.getKey(),value,ttl);
-					pointerMap.put(wKey, pointer);	
+				storageManager.markDirty(newPointer);
+			}
+		}else {
+			oldPointer = pointerMap.get(wKey);
+			if(oldPointer==null) {
+				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+				pointerMap.put(wKey, newPointer);
+			}else {
+				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+					storageManager.markDirty(oldPointer);
 				}else {
-					synchronized (oldPointer) {
-						int size = storageManager.markDirty(oldPointer);
-						usedSize.addAndGet(size * -1);
-						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
-						pointerMap.put(wKey, pointer);		
-					}
+					storageManager.markDirty(newPointer);
 				}
-			}
-			usedSize.addAndGet((wKey.getKey().length + 4 + value.length) * -1);
-		}finally {
-			if(expireLock != null) {
-				expireLock.readLock().unlock();
-			}
-			if(migrateLock != null) {
-				migrateLock.readLock().unlock();
 			}
 		}
-
+		usedSize.addAndGet((wKey.getKey().length + Meta.META_SIZE + value.length) * -1);			
 	}
-	
+
 	private byte[] ToBytes(K key) throws IOException {
 		if(key instanceof byte[]) {
 			return (byte[])key;
@@ -274,15 +206,14 @@ public class QuickCache<K> implements ICache<K> {
 			}
 		}
 	}
-
+	
 	@Override
 	public boolean contains(K key) {
 		return pointerMap.containsKey(key);
 	}
-
+	
 	@Override
 	public void clear() {
-
         pointerMap.clear();
 		storageManager.free();
         usedSize.set(0);
@@ -302,18 +233,17 @@ public class QuickCache<K> implements ICache<K> {
     
 	abstract class DaemonWorker<K> implements Runnable {
 
-	    private WeakReference<QuickCache> cacheHolder;
+	    private WeakReference<SimpleCache> cacheHolder;
 	    private ScheduledExecutorService scheduler;
-	    protected LockCenter lockCenter;
 	    
-	    public DaemonWorker(QuickCache<K> cache) {
+	    public DaemonWorker(SimpleCache<K> cache) {
 			this.scheduler = cache.scheduler;
-	        this.cacheHolder = new WeakReference<QuickCache>(cache);
+	        this.cacheHolder = new WeakReference<SimpleCache>(cache);
 	    }
 		
 	    @Override
 	    public void run() {
-	    	QuickCache cache = cacheHolder.get();
+	    	SimpleCache cache = cacheHolder.get();
 	        if (cache == null) {
 	            // cache is recycled abnormally
 	            if (scheduler != null) {
@@ -323,109 +253,69 @@ public class QuickCache<K> implements ICache<K> {
 	            return;
 	        }
 	        process(cache);
-
 	    }
 	    
-	    public abstract void process(QuickCache<K> cache);	    
+	    public abstract void process(SimpleCache<K> cache);	    
 	}
 	
-	class MigrateScheduler<K> extends DaemonWorker<K> {		    
-		    public MigrateScheduler(QuickCache<K> cache) {
-				super(cache);
-			}
-
-			@Override
-			public void process(QuickCache<K> cache) {
-
-				migrateCounter.incrementAndGet();
-				for(IBlock block:cache.storageManager.getDirtyBlocks()) {
-					try {
-						cache.lockCenter.activeMigrate();
-						for(Meta meta : block.getAllValidMeta()) {
-							Item item = block.readItem(meta);
-							ReentrantReadWriteLock lock = null;
-							WrapperKey wKey = new WrapperKey(item.getKey());
-							try {
-								
-								lock = new ReentrantReadWriteLock();
-								lock.writeLock().lock();
-								cache.lockCenter.registerMigrateLock(wKey.hashCode(), lock);
-								Pointer oldPointer = cache.pointerMap.get(wKey);
-								if(oldPointer != null) {
-									synchronized (oldPointer) {
-										oldPointer = cache.pointerMap.get(wKey);
-										if(oldPointer!=null) {//client may delete key
-											if(oldPointer.getLastAccessTime()==meta.getLastAccessTime()) {
-												
-												storageManager.markDirty(oldPointer);
-												Pointer pointer = storageManager.store(wKey.getKey(),item.getValue(),meta.getTtl());
-												cache.pointerMap.put(wKey, pointer);
-											}
-										}
-									}
-								}
-							}finally {
-								lock.writeLock().unlock();
-								cache.lockCenter.unregisterMigrateLock(wKey.hashCode());							
-							}
-						
-						}
-						block.free();
-					}catch(Throwable t) {
-						migrateErrorCounter.incrementAndGet();
-					}finally {
-						cache.lockCenter.releaseMigrate();						
-					}
-				}
-
-		        cache.storageManager.clean();				
-			}
-	}
-	
-	class ExpireScheduler<K> extends DaemonWorker<K> {
+	class MigrateScheduler<K> extends DaemonWorker<K> {
 	    
-		public ExpireScheduler(QuickCache<K> cache) {
+	    public MigrateScheduler(SimpleCache<K> cache) {
 			super(cache);
 		}
 
 		@Override
-		public void process(QuickCache<K> cache)  {
-			expireCounter.incrementAndGet();
-			for(WrapperKey wKey:cache.pointerMap.keySet()) {
-				cache.lockCenter.activeExpire();
-				Pointer pointer = cache.pointerMap.get(wKey);
-				if(pointer != null&&pointer.isExpired()) {
-					ReentrantReadWriteLock lock = null;
-					try {
-						lock = new ReentrantReadWriteLock();
-						lock.writeLock().lock();
-						cache.lockCenter.registerMigrateLock(wKey.hashCode(), lock);
-						synchronized (pointer) {
-							pointer = cache.pointerMap.get(wKey);
-							if(pointer != null) {
-								if(pointer.isExpired()) {
-									try {
-										cache.pointerMap.remove(wKey);
-										byte[] payload = storageManager.remove(pointer);
-						                usedSize.addAndGet(payload.length * -1);
-									}catch(Throwable t) {
-										expireErrorCounter.incrementAndGet();
-									}
-								}
+		public void process(SimpleCache<K> cache) {
+			
+			migrateCounter.incrementAndGet();
+			for(IBlock block:cache.storageManager.getDirtyBlocks()) {
+				try {
+					for(Meta meta : block.getAllValidMeta()) {
+						Item item = block.readItem(meta);
+						WrapperKey wKey = new WrapperKey(item.getKey());
+						Pointer oldPointer = pointerMap.get(wKey);
+						if(oldPointer != null) {							
+							Pointer newPointer = storageManager.store(item.getKey(), item.getValue(), meta.getTtl());							
+							if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+								storageManager.markDirty(oldPointer);								
+							}else {
+								storageManager.markDirty(newPointer);
 							}
 						}
-					}finally {
-						lock.writeLock().unlock();
-						cache.lockCenter.unregisterExpireLock(wKey.hashCode());
+					}
+					block.free();
+				}catch(Throwable t) {
+					migrateErrorCounter.incrementAndGet();
+				}
+			}
+			storageManager.clean();
+		}
+	}
+	
+	class ExpireScheduler<K> extends DaemonWorker<K> {
+ 
+		public ExpireScheduler(SimpleCache<K> cache) {
+			super(cache);
+		}
+
+		@Override
+		public void process(SimpleCache<K> cache) {
+			expireCounter.incrementAndGet();
+
+			for (WrapperKey wKey : pointerMap.keySet()) {
+				Pointer oldPointer = pointerMap.get(wKey);
+				if (oldPointer != null) {
+					if (oldPointer.isExpired()) {
+						if (pointerMap.remove(wKey, oldPointer)) {							
+							int size = storageManager.markDirty(oldPointer);
+							usedSize.addAndGet(-1*size);
+						}
 					}
 				}
-				cache.lockCenter.releaseExpire();
 			}
-			
 		}
-		
 	}
-
+	
 	public long getHitCounter() {
 		return hitCounter.get();
 	}
@@ -450,10 +340,6 @@ public class QuickCache<K> implements ICache<K> {
 		return expireCounter.get();
 	}
 
-	public long getExpireErrorCounter() {
-		return expireErrorCounter.get();
-	}
-
 	public long getMigrateCounter() {
 		return migrateCounter.get();
 	}
@@ -465,5 +351,4 @@ public class QuickCache<K> implements ICache<K> {
 	public long getUsedSize() {
 		return usedSize.get();
 	}
-
 }
