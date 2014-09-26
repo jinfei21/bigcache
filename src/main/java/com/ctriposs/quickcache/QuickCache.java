@@ -222,7 +222,7 @@ public class QuickCache<K> implements ICache<K> {
                 // update and get the new storage
 				synchronized (oldPointer) {
 					Pointer checkPointer = pointerMap.get(wKey);
-					if(oldPointer!=checkPointer||checkPointer !=null) {
+					if(checkPointer !=null) {
 						int size = storageManager.markDirty(checkPointer);
 						usedSize.addAndGet(size * -1);
 						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);

@@ -50,8 +50,9 @@ public class CacheConfig {
 		return migrateInterval;
 	}
 
-	public void setMigrateInterval(long migrateInterval) {
+	public CacheConfig setMigrateInterval(long migrateInterval) {
 		this.migrateInterval = migrateInterval;
+        return this;
 	}
 
 	public CacheConfig setExpireInterval(long expireInterval) {
