@@ -1,7 +1,10 @@
 package com.ctriposs.quickcache.utils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+
+import static java.nio.file.Files.isSymbolicLink;
 
 public class FileUtil {
 
@@ -24,24 +27,83 @@ public class FileUtil {
 			return false;
 		}
 	}
-	
-	
-    public static void deleteDirectory(File dir) {
-        if (!dir.exists()) return;
-        File[] subs = dir.listFiles();
-        if (subs != null) {
-            for (File f : dir.listFiles()) {
-                if (f.isFile()) {
-                    if(!f.delete()) {
-                        throw new IllegalStateException("delete file failed: "+f);
-                    }
-                } else {
-                    deleteDirectory(f);
-                }
+
+    /**
+     * Deletes a directory recursively.
+     * @param directory directory to delete
+     * @throws java.io.IOException in case deletion is unsuccessful
+     */
+    public static void deleteDirectory(final File directory) throws IOException {
+        if (!directory.exists()) {
+            return;
+        }
+
+        if (!isSymbolicLink(directory.toPath())) {
+            cleanDirectory(directory);
+        }
+
+        if (!directory.delete()) {
+            final String message = "Unable to delete directory " + directory + ".";
+            throw new IOException(message);
+        }
+    }
+
+    /**
+     * Clean a directory without delete it
+     * @param directory directory to clean
+     * @throws java.io.IOException in case cleaning is unsuccessful
+     */
+    public static void cleanDirectory(final File directory) throws IOException {
+        if (!directory.exists()) {
+            final String message = directory + " does not exist";
+            throw new IllegalArgumentException(message);
+        }
+
+        if (!directory.isDirectory()) {
+            final String message = directory + " is not a directory";
+            throw new IllegalArgumentException(message);
+        }
+
+        final File[] files = directory.listFiles();
+        if (files == null) {    // null if security restricted
+            throw new IOException("Failed to list content of " + directory);
+        }
+
+        IOException exception = null;
+        for (final File file : files) {
+            try {
+                forceDelete(file);
+            } catch (final IOException ioe) {
+                exception = ioe;
             }
         }
-        if(!dir.delete()) {
-            throw new IllegalStateException("delete directory failed: "+dir);
+
+        if (null != exception) {
+            throw exception;
+        }
+    }
+
+    /**
+     * Deletes a file. If file is a directory, delete it and all sub-directories.
+     * @param file file or directory to delete, must not be {@code null}
+     */
+    public static void forceDelete(final File file) throws IOException {
+        if (file == null) {
+            return;
+        }
+
+        if (file.isDirectory()) {
+            deleteDirectory(file);
+        } else {
+            final boolean filePresent = file.exists();
+            if (!file.delete()) {
+                if (!filePresent) {
+                    throw new FileNotFoundException("File not exist " + file);
+                }
+
+                final String message = "Unable to delete file " + file;
+                throw new IOException(message);
+            }
         }
     }
 }

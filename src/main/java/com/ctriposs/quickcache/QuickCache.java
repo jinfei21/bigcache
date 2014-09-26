@@ -92,6 +92,7 @@ public class QuickCache<K> implements ICache<K> {
 		if (!this.cacheDir.endsWith(File.separator)) {
 			this.cacheDir += File.separator;
 		}
+
 		// validate directory
 		if (!FileUtil.isFilenameValid(this.cacheDir)) {
 			throw new IllegalArgumentException("Invalid cache data directory : " + this.cacheDir);
@@ -106,8 +107,6 @@ public class QuickCache<K> implements ICache<K> {
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
-		
-    	
     }
 
     private void checkKey(K key) {
@@ -115,6 +114,7 @@ public class QuickCache<K> implements ICache<K> {
     		throw new IllegalArgumentException("key is null");
     	}
     }
+
 	@Override
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();

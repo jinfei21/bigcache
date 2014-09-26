@@ -5,6 +5,7 @@
   <groupId>com.ctriposs.quickcache</groupId>
   <artifactId>quickcache</artifactId>
   <version>1.0</version>
+
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

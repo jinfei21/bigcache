@@ -16,7 +16,7 @@ import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import com.ctriposs.quickcache.IBlock;
 import com.ctriposs.quickcache.utils.FileUtil;
 
-public class StorageManager{
+public class StorageManager {
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
