@@ -224,7 +224,7 @@ public class QuickCache<K> implements ICache<K> {
                 // update and get the new storage
 				synchronized (oldPointer) {
 					Pointer checkPointer = pointerMap.get(wKey);
-					if(oldPointer==checkPointer||checkPointer !=null) {
+					if(checkPointer != null) {
 						int size = storageManager.markDirty(checkPointer);
 						usedSize.addAndGet(size * -1);
 						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
@@ -232,7 +232,6 @@ public class QuickCache<K> implements ICache<K> {
 					}
 				}
 			}else {
-
 				oldPointer = pointerMap.get(wKey);
 				if(oldPointer == null) {
 					Pointer	pointer = storageManager.store(wKey.getKey(),value,ttl);
@@ -398,10 +397,10 @@ public class QuickCache<K> implements ICache<K> {
 		@Override
 		public void process(QuickCache<K> cache)  {
 			expireCounter.incrementAndGet();
-			for(WrapperKey wKey:cache.pointerMap.keySet()) {
+			for(WrapperKey wKey : cache.pointerMap.keySet()) {
 				cache.lockCenter.activeExpire();
 				Pointer pointer = cache.pointerMap.get(wKey);
-				if(pointer != null&&pointer.isExpired()) {
+				if(pointer != null && pointer.isExpired()) {
 					ReentrantReadWriteLock lock = null;
 					try {
 						lock = new ReentrantReadWriteLock();
