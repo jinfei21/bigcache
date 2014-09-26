@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.lang.ref.WeakReference;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -62,8 +61,10 @@ public class SimpleCache<K> implements ICache<K> {
     
     /** The # of migrate for dirty block recycle. */
     protected AtomicLong migrateErrorCounter = new AtomicLong();
-    
-    
+	
+    /**	The lock manager for key during expire or migrate */
+    protected LockCenter lockCenter;
+	
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
     
@@ -78,7 +79,7 @@ public class SimpleCache<K> implements ICache<K> {
     
 	/** Managing the storages. */
 	private final StorageManager storageManager;
-	
+
 	
     public SimpleCache(String dir, CacheConfig config) throws IOException {
     	this.cacheDir = dir;
@@ -101,15 +102,15 @@ public class SimpleCache<K> implements ICache<K> {
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
-		
+		this.lockCenter = new LockCenter();
     }
 	
     private void checkKey(K key) {
     	if(key == null) {
     		throw new IllegalArgumentException("key is null");
     	}
-    }
-
+    }   
+	
 	@Override
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();
@@ -171,22 +172,21 @@ public class SimpleCache<K> implements ICache<K> {
 				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 					storageManager.markDirty(oldPointer);
 				}else {
+					//因迁移导致获取的不一致
+					storageManager.markDirty(oldPointer);
 					pointerMap.put(wKey, newPointer);
+					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
 				}				
 			}
 		}else {
-			oldPointer = pointerMap.get(wKey);
-			if(oldPointer==null) {
+			//只能一个线程加新值
+			try {
+				lockCenter.writeLock(wKey.hashCode());;
 				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
 				pointerMap.put(wKey, newPointer);
-				usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);	
-			}else {
-				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-					storageManager.markDirty(oldPointer);
-				}else {
-					storageManager.markDirty(newPointer);
-				}
+				usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
+			}finally {
+				lockCenter.writeUnlock(wKey.hashCode());
 			}
 		}
 	}
