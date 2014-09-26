@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.lock.LockCenter;
 import com.ctriposs.quickcache.storage.Item;
 import com.ctriposs.quickcache.storage.Meta;
@@ -26,6 +27,9 @@ public class QuickCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
 	public static final long DEFAULT_MIGRATE_INTERVAL = 10 * 60 * 1000;
+	
+	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
+	public static final int DEFAULT_CONCURRENCY_LEVEL = 8; // 256 concurrent level
 	
 	/** The default purge interval which is 10 minutes. */
 	public static final long DEFAULT_EXPIRE_INTERVAL = 10 * 60 * 1000;
@@ -99,8 +103,11 @@ public class QuickCache<K> implements ICache<K> {
 												config.getInitialNumberOfBlocks(), 
 												config.getStorageMode(), 
 												config.getMaxOffHeapMemorySize(),
-												config.getDirtyRatioThreshold());
-		this.storageManager.loadPointerMap(pointerMap);
+												config.getDirtyRatioThreshold(),
+												config.getStartMode());
+		if(config.getStartMode() == StartMode.File) {
+			this.storageManager.loadPointerMap(pointerMap);
+		}
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
@@ -222,7 +229,7 @@ public class QuickCache<K> implements ICache<K> {
                 // update and get the new storage
 				synchronized (oldPointer) {
 					Pointer checkPointer = pointerMap.get(wKey);
-					if(checkPointer !=null) {
+					if(oldPointer!=checkPointer||checkPointer !=null) {
 						int size = storageManager.markDirty(checkPointer);
 						usedSize.addAndGet(size * -1);
 						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);

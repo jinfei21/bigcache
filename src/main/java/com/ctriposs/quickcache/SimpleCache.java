@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.lock.LockCenter;
 import com.ctriposs.quickcache.storage.Item;
 import com.ctriposs.quickcache.storage.Meta;
@@ -80,6 +81,7 @@ public class SimpleCache<K> implements ICache<K> {
 	/** Managing the storages. */
 	private final StorageManager storageManager;
 
+	private ReentrantReadWriteLock gLock = new ReentrantReadWriteLock();
 	
     public SimpleCache(String dir, CacheConfig config) throws IOException {
     	this.cacheDir = dir;
@@ -96,13 +98,15 @@ public class SimpleCache<K> implements ICache<K> {
 												config.getInitialNumberOfBlocks(), 
 												config.getStorageMode(), 
 												config.getMaxOffHeapMemorySize(),
-												config.getDirtyRatioThreshold());
-		
-		this.storageManager.loadPointerMap(pointerMap);
+												config.getDirtyRatioThreshold(),
+												config.getStartMode());
+		if(config.getStartMode() == StartMode.File) {
+			this.storageManager.loadPointerMap(pointerMap);
+		}
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
-		this.lockCenter = new LockCenter();
+		this.lockCenter = new LockCenter(config.getConcurrencyLevel());
     }
 	
     private void checkKey(K key) {
@@ -173,9 +177,17 @@ public class SimpleCache<K> implements ICache<K> {
 					storageManager.markDirty(oldPointer);
 				}else {
 					//因迁移导致获取的不一致
-					storageManager.markDirty(oldPointer);
-					pointerMap.put(wKey, newPointer);
-					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
+					try {
+						gLock.writeLock().lock();
+						oldPointer = pointerMap.get(wKey);
+						if(oldPointer!=null) {
+							storageManager.markDirty(oldPointer);
+						}
+						pointerMap.put(wKey, newPointer);
+						usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);
+					}finally {
+						gLock.writeLock().unlock();
+					}
 				}				
 			}
 		}else {

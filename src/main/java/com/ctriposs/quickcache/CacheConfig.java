@@ -5,7 +5,8 @@ import com.ctriposs.quickcache.storage.StorageManager;
 
 
 public class CacheConfig {
-
+	
+	private int concurrencyLevel = QuickCache.DEFAULT_CONCURRENCY_LEVEL;
 	private int capacityPerBlock = StorageManager.DEFAULT_CAPACITY_PER_BLOCK;
 	private int initialNumberOfBlocks = StorageManager.DEFAULT_INITIAL_NUMBER_OF_BLOCKS;
     private long maxOffHeapMemorySize = StorageManager.DEFAULT_MAX_OFFHEAP_MEMORY_SIZE;	
@@ -13,12 +14,16 @@ public class CacheConfig {
     private long migrateInterval = QuickCache.DEFAULT_MIGRATE_INTERVAL;
     private double dirtyRatioThreshold = QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD;
     private StorageMode storageMode = StorageMode.PureFile;
-	
+    private StartMode startMode = StartMode.None;
     
 	public int getCapacityPerBlock() {
 		return capacityPerBlock;
 	}
-
+	
+	public int getConcurrencyLevel() {
+		return concurrencyLevel;
+	}
+	
 	public CacheConfig setCapacityPerBlock(int capacityPerBlock) {
 		if(capacityPerBlock < 16 * 1024 * 1024){
 			throw new IllegalArgumentException("capacityPerBlock must be bigger than 16MB!");
@@ -50,9 +55,8 @@ public class CacheConfig {
 		return migrateInterval;
 	}
 
-	public CacheConfig setMigrateInterval(long migrateInterval) {
+	public void setMigrateInterval(long migrateInterval) {
 		this.migrateInterval = migrateInterval;
-        return this;
 	}
 
 	public CacheConfig setExpireInterval(long expireInterval) {
@@ -76,6 +80,14 @@ public class CacheConfig {
 	public CacheConfig setStorageMode(StorageMode storageMode) {
 		this.storageMode = storageMode;
 		return this;
+	}
+
+	public StartMode getStartMode() {
+		return startMode;
+	}
+
+	public void setStartMode(StartMode startMode) {
+		this.startMode = startMode;
 	}
 
 	/**
@@ -103,5 +115,10 @@ public class CacheConfig {
 		PureFile,
 		MapFile,
 		OffHeapFile,
+	}
+	
+	public enum StartMode {
+		None,
+		File
 	}
 }

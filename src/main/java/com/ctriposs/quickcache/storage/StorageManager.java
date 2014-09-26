@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import com.ctriposs.quickcache.IBlock;
 import com.ctriposs.quickcache.IStorage;
@@ -63,6 +64,8 @@ public class StorageManager{
 	 */
 	private final StorageMode storageMode;
 	
+	private final StartMode startMode;
+	
 	/**
 	 * The number of memory blocks allow to be created.
 	 */
@@ -85,7 +88,7 @@ public class StorageManager{
 	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
-			long maxOffHeapMemorySize,double dirtyRatioThreshold) throws IOException {
+			long maxOffHeapMemorySize,double dirtyRatioThreshold,StartMode startMode) throws IOException {
 		this.dirtyRatioThreshold = dirtyRatioThreshold;
 		
 		if (storageMode != StorageMode.PureFile) {
@@ -95,6 +98,7 @@ public class StorageManager{
 		}
 
 		this.storageMode = storageMode;	
+		this.startMode = startMode;
 		this.capacityPerBlock = capacityPerBlock;
 		this.dir = dir;
 		initializeBlocks(new File(dir), initialNumberOfBlocks);
@@ -102,16 +106,25 @@ public class StorageManager{
 	}
 	
 	private void initializeBlocks(File directory,int initialNumberOfBlocks) throws IOException {
-		List<File> list = FileUtil.listFiles(directory);
-		int size = list.size()+1;
-		for(File file:list) {
-			String backFileName = dir + (size--) + "-" + System.currentTimeMillis() + IStorage.DATA_FILE_SUFFIX;
-			file.renameTo(new File(backFileName));
-			IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
-			block.getAllValidMeta();
-			usedBlocks.add(block);			
+		List<File> list = null;
+		switch (startMode) {
+		case None:
+			FileUtil.deleteDirectory(directory);
+			list = FileUtil.listFiles(directory);			
+			break;
+		case File:
+			list = FileUtil.listFiles(directory);
+			int size = list.size()+1;
+			for(File file:list) {
+				String backFileName = dir + (size--) + "-" + System.currentTimeMillis() + IStorage.DATA_FILE_SUFFIX;
+				file.renameTo(new File(backFileName));
+				IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
+				block.getAllValidMeta();
+				usedBlocks.add(block);			
+			}
+			break;
 		}
-		
+				
 		for (int i = list.size(); i < initialNumberOfBlocks; i++) {
 			IBlock storageBlock = createNewBlock(i);
 			freeBlocks.offer(storageBlock);
