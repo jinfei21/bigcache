@@ -166,17 +166,24 @@ public class SimpleCache<K> implements ICache<K> {
 		Pointer oldPointer = pointerMap.get(wKey);
 			
 		if (oldPointer != null) {
-			Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-			if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-				storageManager.markDirty(oldPointer);
-			}else {
-				storageManager.markDirty(newPointer);
+			synchronized (oldPointer) {
+				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+					storageManager.markDirty(oldPointer);
+				}else {
+					oldPointer = pointerMap.get(wKey);
+					synchronized (oldPointer) {
+						pointerMap.replace(wKey, oldPointer, newPointer);
+					}
+				}				
 			}
+
 		}else {
 			oldPointer = pointerMap.get(wKey);
 			if(oldPointer==null) {
 				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
 				pointerMap.put(wKey, newPointer);
+				usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);	
 			}else {
 				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
 				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
@@ -186,7 +193,6 @@ public class SimpleCache<K> implements ICache<K> {
 				}
 			}
 		}
-		usedSize.addAndGet((wKey.getKey().length + Meta.META_SIZE + value.length) * -1);			
 	}
 
 	private byte[] ToBytes(K key) throws IOException {
