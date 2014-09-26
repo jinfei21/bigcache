@@ -15,8 +15,7 @@ import com.ctriposs.quickcache.utils.ByteUtil;
 public class StorageBlock implements IBlock {
 	
 	public static final int DEFAULT_META_AREA_SIZE = 4 * 1024 * 1024; // 4M
-	
-	
+
 	/** The index. */
 	private final int index;
 	
@@ -27,7 +26,7 @@ public class StorageBlock implements IBlock {
 	private final int metaCapacity;
 	
 	/** The dirty storage. */
-	private final AtomicInteger dirtyStorage = new AtomicInteger(Head.HEAD_SIZE+DEFAULT_META_AREA_SIZE);
+	private final AtomicInteger dirtyStorage = new AtomicInteger(Head.HEAD_SIZE + DEFAULT_META_AREA_SIZE);
 	
 	/** The used storage. */
 	private final AtomicInteger usedStorage = new AtomicInteger(0);
@@ -57,19 +56,19 @@ public class StorageBlock implements IBlock {
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
-		case PureFile:
-			this.underlyingStorage = new PureFileStorage(dir, index, capacity);
-			break;
-		case MapFile:
-			this.underlyingStorage = new MapFileStorage(dir, index, capacity);
-			break;
-		case OffHeapFile:
-			this.underlyingStorage = new OffHeapStorage(capacity);
-			break;
+            case PureFile:
+                this.underlyingStorage = new PureFileStorage(dir, index, capacity);
+                break;
+            case MapFile:
+                this.underlyingStorage = new MapFileStorage(dir, index, capacity);
+                break;
+            case OffHeapFile:
+                this.underlyingStorage = new OffHeapStorage(capacity);
+                break;
 		}
-		this.metaCapacity = DEFAULT_META_AREA_SIZE+Head.HEAD_SIZE;
+		this.metaCapacity = DEFAULT_META_AREA_SIZE + Head.HEAD_SIZE;
 		this.currentMetaOffset.set(Head.HEAD_SIZE);
-		this.currentItemOffset.set(Head.HEAD_SIZE+DEFAULT_META_AREA_SIZE);
+		this.currentItemOffset.set(Head.HEAD_SIZE + DEFAULT_META_AREA_SIZE);
 		deactive();
 	}
 	
@@ -297,7 +296,6 @@ public class StorageBlock implements IBlock {
 			this.underlyingStorage.put(Head.ACTIVE_OFFSET, source);
 		} catch (IOException e) {
 		}
-		
 	}
 
 
