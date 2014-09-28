@@ -20,7 +20,7 @@ import com.ctriposs.quickcache.IBlock;
 import com.ctriposs.quickcache.IStorage;
 import com.ctriposs.quickcache.utils.FileUtil;
 
-public class StorageManager{
+public class StorageManager {
 	/**
 	 * The Constant DEFAULT_CAPACITY_PER_BLOCK.
 	 */
@@ -34,7 +34,7 @@ public class StorageManager{
 	/**
 	 * The Constant DEFAULT_MEMORY_SIZE.
 	 */
-	public static final long DEFAULT_MAX_OFFHEAP_MEMORY_SIZE = 2 * 1024 * 1024 * 1024L; //Unit: GB
+	public static final long DEFAULT_MAX_OFFHEAP_MEMORY_SIZE = 2 * 1024 * 1024 * 1024L; // Unit: GB
 	
 	/** 
 	 * keep track of the number of blocks allocated 
@@ -63,7 +63,10 @@ public class StorageManager{
 	 * Current storage mode
 	 */
 	private final StorageMode storageMode;
-	
+
+    /**
+     * Start mode
+     */
 	private final StartMode startMode;
 	
 	/**
@@ -88,7 +91,7 @@ public class StorageManager{
 	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
-			long maxOffHeapMemorySize,double dirtyRatioThreshold,StartMode startMode) throws IOException {
+			long maxOffHeapMemorySize, double dirtyRatioThreshold, StartMode startMode) throws IOException {
 		this.dirtyRatioThreshold = dirtyRatioThreshold;
 		
 		if (storageMode != StorageMode.PureFile) {
@@ -197,8 +200,8 @@ public class StorageManager{
 	}
 
 	
-	public Pointer store(byte[] key,byte[] value,long ttl) throws IOException {
-		Pointer pointer = activeBlock.store(key,value,ttl);
+	public Pointer store(byte[] key, byte[] value, long ttl) throws IOException {
+		Pointer pointer = activeBlock.store(key, value, ttl);
 		if (pointer != null) {// success
 			return pointer; 
 		}else { // overflow
