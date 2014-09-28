@@ -83,6 +83,22 @@ public class QuickCacheReadWriteStressTest {
         System.out.println("read " + count / (1000 * 1000) + " million times:" + (System.nanoTime() - startTime) / (1000 * 1000) + " ms");
     }
 
+    @Test
+    public void testReadWriteOneMillion() throws Exception {
+        final long count = 1000 * 1000;
+        final int keyLen = 8;
+        final int valueLen = 128;
+        executeReadWrite(count, keyLen, valueLen);
+    }
+
+    @Test
+    public void testReadWriteTwoMillion() throws Exception {
+        final long count = 2 * 1000 * 1000;
+        final int keyLen = 8;
+        final int valueLen = 1024;
+        executeReadWrite(count, keyLen, valueLen);
+    }
+
     private void executeReadWrite(final long count, int keyLen, int valueLen) throws IOException {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(storageMode);
