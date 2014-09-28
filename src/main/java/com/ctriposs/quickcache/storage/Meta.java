@@ -18,7 +18,7 @@ public class Meta implements Serializable {
 	private int valueSize;
 	private long lastAccessTime;
 	private long ttl;//-1 means never expire;0 means delete
-	private int index = -1;//-1 means invalid
+	private int metaOffset = -1;//-1 means invalid
 
 	public Meta() {
 		this.keyOffSet = 0;
@@ -28,17 +28,17 @@ public class Meta implements Serializable {
 		this.ttl = 0;
 	}
 	
-	public Meta(int index,int keyOffSet,int keySize,int valuesize,long lastAccessTime,long ttl) {
+	public Meta(int metaOffset,int keyOffSet,int keySize,int valuesize,long lastAccessTime,long ttl) {
 		this.keyOffSet = keyOffSet;
 		this.keySize = keySize;
 		this.lastAccessTime = lastAccessTime;
 		this.ttl = ttl;
-		this.index = index;
+		this.metaOffset = metaOffset;
 	}
 	
 
-	public int getIndex() {
-		return index;
+	public int getMetaOffset() {
+		return metaOffset;
 	}
 
 	public int getKeySize() {

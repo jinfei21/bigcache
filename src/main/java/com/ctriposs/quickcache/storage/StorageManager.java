@@ -17,7 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import com.ctriposs.quickcache.IBlock;
-import com.ctriposs.quickcache.IStorage;
 import com.ctriposs.quickcache.utils.FileUtil;
 
 public class StorageManager{
@@ -150,11 +149,11 @@ public class StorageManager{
 					WrapperKey wKey = new WrapperKey(item.getKey());
 					Pointer oldPointer = map.get(wKey);
 					if(oldPointer==null) {
-						Pointer pointer = new Pointer(block, meta.getIndex(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
+						Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 						map.put(wKey, pointer);
 					}else {
 						if(oldPointer.getLastAccessTime()<meta.getLastAccessTime()) {
-							Pointer pointer = new Pointer(block, meta.getIndex(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
+							Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 							map.put(wKey, pointer);
 							markDirty(oldPointer);
 						}

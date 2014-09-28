@@ -309,7 +309,7 @@ public class StorageBlock implements IBlock {
 			long lastaccesstime = ByteUtil.ToLong(bytes);
 			underlyingStorage.get(offset + Meta.TTL_OFFSET, bytes);
 			long ttl = ByteUtil.ToLong(bytes);
-			meta = new Meta(index,keyoffset,keysize,valuesize,lastaccesstime,ttl);
+			meta = new Meta(offset,keyoffset,keysize,valuesize,lastaccesstime,ttl);
 		}
 		return meta;
 	}
