@@ -114,10 +114,7 @@ public class StorageManager{
 			break;
 		case File:
 			list = FileUtil.listFiles(directory);
-			int size = list.size()+1;
 			for(File file:list) {
-				String backFileName = dir + (size--) + "-" + System.currentTimeMillis() + IStorage.DATA_FILE_SUFFIX;
-				file.renameTo(new File(backFileName));
 				IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
 				block.getAllValidMeta();
 				usedBlocks.add(block);			
