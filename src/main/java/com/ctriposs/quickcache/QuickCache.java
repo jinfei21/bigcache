@@ -231,7 +231,7 @@ public class QuickCache<K> implements ICache<K> {
 					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 						storageManager.markDirty(oldPointer);
 					}else {
-						//ÒòÇ¨ÒÆµ¼ÖÂ»ñÈ¡µÄ²»Ò»ÖÂ
+						//åªèƒ½ä¸€ä¸ªè§£å†³å†²çª
 						try {
 							lockCenter.writeLock(wKey.hashCode());
 							oldPointer = pointerMap.get(wKey);
@@ -247,7 +247,7 @@ public class QuickCache<K> implements ICache<K> {
 				}
 
 			}else {
-				//Ö»ÄÜÒ»¸öÏß³Ì¼ÓĞÂÖµ
+				//åªèƒ½ä¸€ä¸ªclientæ–°å¢
 				try {
 					lockCenter.writeLock(wKey.hashCode());
 					Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
