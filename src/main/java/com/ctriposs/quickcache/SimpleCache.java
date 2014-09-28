@@ -172,8 +172,13 @@ public class SimpleCache<K> implements ICache<K> {
 		while(true){
 			Pointer oldPointer = pointerMap.get(wKey);
 			if(oldPointer != null){
-				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-					storageManager.markDirty(oldPointer);
+				if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+						storageManager.markDirty(oldPointer);
+						break;
+					}
+				}else {
+					storageManager.markDirty(newPointer);
 					break;
 				}
 			}else{
