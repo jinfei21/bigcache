@@ -1,10 +1,10 @@
 package com.ctriposs.quickcache;
 
-import com.ctriposs.quickcache.util.TestUtil;
-
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.ctriposs.quickcache.util.TestUtil;
 
 public class QuickCacheStressTest {
 

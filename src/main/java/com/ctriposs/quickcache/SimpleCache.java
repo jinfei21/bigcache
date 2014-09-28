@@ -81,7 +81,6 @@ public class SimpleCache<K> implements ICache<K> {
 	/** Managing the storages. */
 	private final StorageManager storageManager;
 
-	private ReentrantReadWriteLock gLock = new ReentrantReadWriteLock();
 	
     public SimpleCache(String dir, CacheConfig config) throws IOException {
     	this.cacheDir = dir;
@@ -129,7 +128,7 @@ public class SimpleCache<K> implements ICache<K> {
 
 		if (!pointer.isExpired()) {
 			// access time updated, the following change will not be lost
-			pointer.setLastAccessTime(System.currentTimeMillis());
+			//pointer.setLastAccessTime(System.currentTimeMillis());
 			hitCounter.incrementAndGet();
 			return storageManager.retrieve(pointer);
 		} else {
@@ -178,7 +177,7 @@ public class SimpleCache<K> implements ICache<K> {
 				}else {
 					//因迁移导致获取的不一致
 					try {
-						gLock.writeLock().lock();
+						lockCenter.writeLock(wKey.hashCode());
 						oldPointer = pointerMap.get(wKey);
 						if(oldPointer!=null) {
 							storageManager.markDirty(oldPointer);
@@ -186,14 +185,14 @@ public class SimpleCache<K> implements ICache<K> {
 						pointerMap.put(wKey, newPointer);
 						usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);
 					}finally {
-						gLock.writeLock().unlock();
+						lockCenter.writeUnlock(wKey.hashCode());
 					}
 				}				
 			}
 		}else {
 			//只能一个线程加新值
 			try {
-				lockCenter.writeLock(wKey.hashCode());;
+				lockCenter.writeLock(wKey.hashCode());
 				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
 				pointerMap.put(wKey, newPointer);
 				usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
