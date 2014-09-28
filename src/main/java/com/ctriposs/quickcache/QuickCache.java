@@ -44,34 +44,34 @@ public class QuickCache<K> implements ICache<K> {
     public static final int MAX_VALUE_LENGTH = 4 * 1024 * 1024;
 
 	/** The hit counter. */
-	protected AtomicLong hitCounter = new AtomicLong();
+    private AtomicLong hitCounter = new AtomicLong();
 
 	/** The miss counter. */
-	protected AtomicLong missCounter = new AtomicLong();
+    private AtomicLong missCounter = new AtomicLong();
 
     /** The get counter. */
-    protected AtomicLong getCounter = new AtomicLong();
+    private AtomicLong getCounter = new AtomicLong();
 
     /** The put counter. */
-    protected AtomicLong putCounter = new AtomicLong();
+    private AtomicLong putCounter = new AtomicLong();
 
     /** The delete counter. */
-    protected AtomicLong deleteCounter = new AtomicLong();
+    private AtomicLong deleteCounter = new AtomicLong();
 
     /** The # of expire due to expiration. */
-    protected AtomicLong expireCounter = new AtomicLong();
+    private AtomicLong expireCounter = new AtomicLong();
     
     /** The # of expire due to expiration. */
-    protected AtomicLong expireErrorCounter = new AtomicLong();
+    private AtomicLong expireErrorCounter = new AtomicLong();
 
     /** The # of migrate for dirty block recycle. */
-    protected AtomicLong migrateCounter = new AtomicLong();
+    private AtomicLong migrateCounter = new AtomicLong();
     
     /** The # of migrate for dirty block recycle. */
-    protected AtomicLong migrateErrorCounter = new AtomicLong();
+    private AtomicLong migrateErrorCounter = new AtomicLong();
     
     /**	The lock manager for key during expire or migrate */
-    protected LockCenter lockCenter;
+    private LockCenter lockCenter;
     
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
@@ -80,10 +80,10 @@ public class QuickCache<K> implements ICache<K> {
 	private String cacheDir;
     
     /** The total storage size we have used, including the expired ones which are still in the pointermap */
-    protected AtomicLong usedSize = new AtomicLong();
+	private AtomicLong usedSize = new AtomicLong();
 
 	/** The internal map. */
-	protected final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>();
+	private final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>();
     
 	/** Managing the storages. */
 	private final StorageManager storageManager;
@@ -169,11 +169,11 @@ public class QuickCache<K> implements ICache<K> {
             		Pointer checkPointer = pointerMap.get(wKey);
             		if(oldPointer==checkPointer) {
 						byte[] payload = storageManager.remove(oldPointer);
-		                usedSize.addAndGet(payload.length * -1);
+		                usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
 						return payload;
             		}else if(checkPointer !=null) {
 						byte[] payload = storageManager.remove(checkPointer);
-		                usedSize.addAndGet(payload.length * -1);
+		                usedSize.addAndGet((checkPointer.getItemSize()+Meta.META_SIZE)  * -1);
 						return payload;
             		}
 				}
@@ -257,7 +257,7 @@ public class QuickCache<K> implements ICache<K> {
 					lockCenter.writeUnlock(wKey.hashCode());
 				}
 			}
-			usedSize.addAndGet((wKey.getKey().length + Meta.META_SIZE + value.length) * -1);
+			
 		}finally {
 			if(expireLock != null) {
 				expireLock.readLock().unlock();
@@ -405,21 +405,22 @@ public class QuickCache<K> implements ICache<K> {
 			expireCounter.incrementAndGet();
 			for(WrapperKey wKey:cache.pointerMap.keySet()) {
 				cache.lockCenter.activeExpire();
-				Pointer pointer = cache.pointerMap.get(wKey);
-				if(pointer != null&&pointer.isExpired()) {
+				Pointer oldPointer = cache.pointerMap.get(wKey);
+				if(oldPointer != null&&oldPointer.isExpired()) {
 					ReentrantReadWriteLock lock = null;
 					try {
 						lock = new ReentrantReadWriteLock();
 						lock.writeLock().lock();
 						cache.lockCenter.registerMigrateLock(wKey.hashCode(), lock);
-						synchronized (pointer) {
-							pointer = cache.pointerMap.get(wKey);
-							if(pointer != null) {
-								if(pointer.isExpired()) {
+						synchronized (oldPointer) {
+							oldPointer = cache.pointerMap.get(wKey);
+							if(oldPointer != null) {
+								if(oldPointer.isExpired()) {
 									try {
-										cache.pointerMap.remove(wKey);
-										byte[] payload = storageManager.remove(pointer);
-						                usedSize.addAndGet(payload.length * -1);
+										if(pointerMap.remove(wKey,oldPointer)) {
+											int size = storageManager.markDirty(oldPointer);
+											usedSize.addAndGet(-1*size);
+										}
 									}catch(Throwable t) {
 										expireErrorCounter.incrementAndGet();
 									}

@@ -157,9 +157,12 @@ public class StorageBlock implements IBlock {
 
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
-		byte bytes[] = new byte[pointer.getValueSize()];
+		byte bytes[] = new byte[4];
 		//underlyingStorage.put(pointer.getMetaOffset() + Meta.TTL_OFFSET, ByteUtil.toBytes(pointer.getLastAccessTime()));
 		underlyingStorage.get(pointer.getMetaOffset() + pointer.getKeySize(), bytes);
+		int itemOffset = ByteUtil.ToInt(bytes);
+		bytes = new byte[pointer.getValueSize()];
+		underlyingStorage.get(itemOffset + pointer.getKeySize(), bytes);
 		return bytes;
 	}
 

@@ -17,10 +17,10 @@ public class Head {
 	private final AtomicInteger metaCount = new AtomicInteger(0);
 	
 	/** The item offset within the storage block. */
-	private final AtomicInteger currentItemOffset = new AtomicInteger(0);
+	private final AtomicInteger currentItemOffset = new AtomicInteger(Head.HEAD_SIZE+Meta.DEFAULT_META_AREA_SIZE);
 	
 	/** The meta offset within the storage block. */
-	private final AtomicInteger currentMetaOffset = new AtomicInteger(0);
+	private final AtomicInteger currentMetaOffset = new AtomicInteger(Head.HEAD_SIZE);
 	
 	public Head() {
 		this.activeFlag = FLAG_FREE;

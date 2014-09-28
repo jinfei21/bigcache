@@ -40,31 +40,31 @@ public class SimpleCache<K> implements ICache<K> {
     public static final int MAX_VALUE_LENGTH = 4 * 1024 * 1024;
 
 	/** The hit counter. */
-	protected AtomicLong hitCounter = new AtomicLong();
+    private AtomicLong hitCounter = new AtomicLong();
 
 	/** The miss counter. */
-	protected AtomicLong missCounter = new AtomicLong();
+	private AtomicLong missCounter = new AtomicLong();
 
     /** The get counter. */
-    protected AtomicLong getCounter = new AtomicLong();
+	private AtomicLong getCounter = new AtomicLong();
 
     /** The put counter. */
-    protected AtomicLong putCounter = new AtomicLong();
+    private AtomicLong putCounter = new AtomicLong();
 
     /** The delete counter. */
-    protected AtomicLong deleteCounter = new AtomicLong();
+    private AtomicLong deleteCounter = new AtomicLong();
 
     /** The # of expire due to expiration. */
-    protected AtomicLong expireCounter = new AtomicLong();
+    private AtomicLong expireCounter = new AtomicLong();
 
     /** The # of migrate for dirty block recycle. */
-    protected AtomicLong migrateCounter = new AtomicLong();
+    private AtomicLong migrateCounter = new AtomicLong();
     
     /** The # of migrate for dirty block recycle. */
-    protected AtomicLong migrateErrorCounter = new AtomicLong();
+    private AtomicLong migrateErrorCounter = new AtomicLong();
 	
     /**	The lock manager for key during expire or migrate */
-    protected LockCenter lockCenter;
+    private LockCenter lockCenter;
 	
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
@@ -73,10 +73,10 @@ public class SimpleCache<K> implements ICache<K> {
 	private String cacheDir;
     
     /** The total storage size we have used, including the expired ones which are still in the pointermap */
-    protected AtomicLong usedSize = new AtomicLong();
+	private AtomicLong usedSize = new AtomicLong();
 
 	/** The internal map. */
-	protected final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>();
+    private final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>();
     
 	/** Managing the storages. */
 	private final StorageManager storageManager;
@@ -287,12 +287,14 @@ public class SimpleCache<K> implements ICache<K> {
 						Item item = block.readItem(meta);
 						WrapperKey wKey = new WrapperKey(item.getKey());
 						Pointer oldPointer = pointerMap.get(wKey);
-						if(oldPointer != null) {							
-							Pointer newPointer = storageManager.store(item.getKey(), item.getValue(), meta.getTtl());							
-							if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-								storageManager.markDirty(oldPointer);								
-							}else {
-								storageManager.markDirty(newPointer);
+						if(oldPointer != null) {		
+							if(oldPointer.getBlock() == block) {
+								Pointer newPointer = storageManager.store(item.getKey(), item.getValue(), meta.getTtl());							
+								if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+									storageManager.markDirty(oldPointer);								
+								}else {
+									storageManager.markDirty(newPointer);
+								}
 							}
 						}
 					}
