@@ -71,7 +71,7 @@ public class QuickCache<K> implements ICache<K> {
     protected AtomicLong migrateErrorCounter = new AtomicLong();
     
     /**	The lock manager for key during expire or migrate */
-    protected LockCenter lockCenter = new LockCenter();
+    protected LockCenter lockCenter;
     
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
@@ -111,7 +111,7 @@ public class QuickCache<K> implements ICache<K> {
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
-		
+		this.lockCenter = new LockCenter(config.getConcurrencyLevel());
     }
 
     private void checkKey(K key) {
@@ -133,7 +133,7 @@ public class QuickCache<K> implements ICache<K> {
 
 		if (!pointer.isExpired()) {
 			// access time updated, the following change will not be lost
-			pointer.setLastAccessTime(System.currentTimeMillis());
+			//pointer.setLastAccessTime(System.currentTimeMillis());
 			hitCounter.incrementAndGet();
 			return storageManager.retrieve(pointer);
 		} else {
@@ -163,17 +163,15 @@ public class QuickCache<K> implements ICache<K> {
 			if(migrateLock != null) {
 				migrateLock.readLock().lock();
 			}
-			Pointer oldPointer = pointerMap.get(wKey);
+			Pointer oldPointer = pointerMap.remove(wKey);
             if (oldPointer != null) {
             	synchronized (oldPointer) {
             		Pointer checkPointer = pointerMap.get(wKey);
             		if(oldPointer==checkPointer) {
-	            		pointerMap.remove(wKey);
 						byte[] payload = storageManager.remove(oldPointer);
 		                usedSize.addAndGet(payload.length * -1);
 						return payload;
             		}else if(checkPointer !=null) {
-	            		pointerMap.remove(wKey);
 						byte[] payload = storageManager.remove(checkPointer);
 		                usedSize.addAndGet(payload.length * -1);
 						return payload;
@@ -228,31 +226,38 @@ public class QuickCache<K> implements ICache<K> {
 			if (oldPointer != null) {
                 // update and get the new storage
 				synchronized (oldPointer) {
-					Pointer checkPointer = pointerMap.get(wKey);
-					if(oldPointer!=checkPointer||checkPointer !=null) {
-						int size = storageManager.markDirty(checkPointer);
-						usedSize.addAndGet(size * -1);
-						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
-						pointerMap.put(wKey, pointer);						
+					
+					Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+						storageManager.markDirty(oldPointer);
+					}else {
+						//因迁移导致获取的不一致
+						try {
+							lockCenter.writeLock(wKey.hashCode());
+							oldPointer = pointerMap.get(wKey);
+							if(oldPointer!=null) {
+								storageManager.markDirty(oldPointer);
+							}
+							pointerMap.put(wKey, newPointer);
+							usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);
+						}finally {
+							lockCenter.writeUnlock(wKey.hashCode());
+						}
 					}
 				}
 
 			}else {
-
-				oldPointer = pointerMap.get(wKey);
-				if(oldPointer == null) {
-					Pointer	pointer = storageManager.store(wKey.getKey(),value,ttl);
-					pointerMap.put(wKey, pointer);	
-				}else {
-					synchronized (oldPointer) {
-						int size = storageManager.markDirty(oldPointer);
-						usedSize.addAndGet(size * -1);
-						Pointer pointer = storageManager.store(wKey.getKey(),value,ttl);
-						pointerMap.put(wKey, pointer);		
-					}
+				//只能一个线程加新值
+				try {
+					lockCenter.writeLock(wKey.hashCode());
+					Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+					pointerMap.put(wKey, newPointer);
+					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
+				}finally {
+					lockCenter.writeUnlock(wKey.hashCode());
 				}
 			}
-			usedSize.addAndGet((wKey.getKey().length + 4 + value.length) * -1);
+			usedSize.addAndGet((wKey.getKey().length + Meta.META_SIZE + value.length) * -1);
 		}finally {
 			if(expireLock != null) {
 				expireLock.readLock().unlock();

@@ -123,13 +123,13 @@ public class StorageBlock implements IBlock {
 		underlyingStorage.put(allocation.itemOffset, key);
 		underlyingStorage.put(allocation.itemOffset + key.length, value);
 		//add stat
-		usedStorage.addAndGet(payloadLength);
+		usedStorage.addAndGet(payloadLength+Meta.META_SIZE);
 		return pointer;
 	}
 
 	@Override
 	public Pointer store(byte[] key,byte[] value,long ttl) throws IOException {
-		int payloadLength = key.length + value.length + 4;
+		int payloadLength = key.length + value.length;
 		Allocation allocation = allocate(payloadLength);
 		if (allocation == null) return null; // not enough storage available
 		Pointer pointer = store(allocation, key,value,ttl,payloadLength);
