@@ -117,14 +117,19 @@ public class StorageManager{
 			for(File file:list) {
 				IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
 				block.getAllValidMeta();
-				usedBlocks.add(block);			
+				if(block.getMetaCount() == 0) {
+					freeBlocks.offer(block);
+				}else {
+					usedBlocks.add(block);					
+				}
+			
 			}
 			break;
 		}
 				
 		for (int i = list.size(); i < initialNumberOfBlocks; i++) {
-			IBlock storageBlock = createNewBlock(i);
-			freeBlocks.offer(storageBlock);
+			IBlock block = createNewBlock(i);
+			freeBlocks.offer(block);
 			blockCount.incrementAndGet();
 		}		
 		this.activeBlock = freeBlocks.poll();
@@ -151,6 +156,7 @@ public class StorageManager{
 						if(oldPointer.getLastAccessTime()<meta.getLastAccessTime()) {
 							Pointer pointer = new Pointer(block, meta.getIndex(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 							map.put(wKey, pointer);
+							markDirty(oldPointer);
 						}
 					}
 				}	

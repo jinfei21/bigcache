@@ -312,7 +312,7 @@ public class QuickCache<K> implements ICache<K> {
 		return 1.0 * hitCounter.get() / (hitCounter.get() + missCounter.get());
 	}
     
-	abstract class DaemonWorker<K> implements Runnable {
+	abstract static class DaemonWorker<K> implements Runnable {
 
 	    private WeakReference<QuickCache> cacheHolder;
 	    private ScheduledExecutorService scheduler;

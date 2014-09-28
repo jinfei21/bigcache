@@ -29,7 +29,7 @@ public class StorageBlock implements IBlock {
 	private final AtomicInteger dirtyStorage = new AtomicInteger(Head.HEAD_SIZE);
 	
 	/** The used storage. */
-	private final AtomicInteger usedStorage = new AtomicInteger(0);
+	private final AtomicInteger usedStorage = new AtomicInteger(Head.HEAD_SIZE);
 	
 	/** The underlying storage. */
 	private IStorage underlyingStorage;	
@@ -186,7 +186,7 @@ public class StorageBlock implements IBlock {
 	@Override
 	public void close() throws IOException {
 		if (underlyingStorage != null) {
-			underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
+			//underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
 			underlyingStorage.close();
 		}
 	}
@@ -317,17 +317,17 @@ public class StorageBlock implements IBlock {
 	@Override
 	public List<Meta> getAllValidMeta() throws IOException {
 		List<Meta> list = new ArrayList<Meta>();
-		int realDirtySize = 0;
+		int useSize = 0;
 		for (int i = 0; i < head.getCurrentMetaCount(); i++) {
 			Meta meta = readMeta(i);
 			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()||meta.getTtl() == Meta.TTL_NEVER_EXPIRE) {
 				list.add(meta);
-			}else {
-				realDirtySize = meta.getKeySize()+meta.getValueSize()+Meta.META_SIZE;
 			}
+			useSize += (meta.getKeySize()+meta.getValueSize()+Meta.META_SIZE);
+			
 		}
-		dirtyStorage.set(realDirtySize);
-
+		dirtyStorage.set(capacity - useSize);
+		usedStorage.set(useSize);
 		if(getDirtyRatio() < QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD) {
 			list.clear();
 		}
