@@ -1,5 +1,7 @@
-package com.ctriposs.quickcache;
+package com.ctriposs.simplecache;
 
+import com.ctriposs.quickcache.CacheConfig;
+import com.ctriposs.quickcache.SimpleCache;
 import com.ctriposs.quickcache.util.TestSample;
 import com.ctriposs.quickcache.util.TestUtil;
 import com.ctriposs.quickcache.utils.FileUtil;
@@ -22,11 +24,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 @RunWith(Parameterized.class)
-public class QuickCacheReadWriteStressTest {
+public class SimpleCacheReadWriteStressTest {
 
-    private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "stress/quickcache/";
+    private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "stress/simplecache/";
 
-    private static QuickCache<String> cache;
+    private static SimpleCache<String> cache;
 
     @Parameterized.Parameter(value = 0)
     public CacheConfig.StorageMode storageMode;
@@ -41,10 +43,10 @@ public class QuickCacheReadWriteStressTest {
         return Arrays.asList(data);
     }
 
-    public QuickCache<String> cache(long count) throws IOException {
+    public SimpleCache<String> cache(long count) throws IOException {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(storageMode);
-        QuickCache<String> cache = new QuickCache<String>(TEST_DIR, config);
+        SimpleCache<String> cache = new SimpleCache<String>(TEST_DIR, config);
 
         for (long i = 0; i < count; i++) {
             String key = "" + i;
@@ -109,7 +111,7 @@ public class QuickCacheReadWriteStressTest {
     private void executeReadWrite(final long count, int keyLen, int valueLen) throws IOException {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(storageMode);
-        cache = new QuickCache<String>(TEST_DIR, config);
+        cache = new SimpleCache<String>(TEST_DIR, config);
         List<String> keys = new ArrayList<String>();
 
         String key = TestUtil.randomString(keyLen);
@@ -143,7 +145,7 @@ public class QuickCacheReadWriteStressTest {
         config.setCapacityPerBlock(20 * 1024 * 1024)
                 .setExpireInterval(2 * 1000)
                 .setMigrateInterval(2 * 1000);
-        cache = new QuickCache<String>(TEST_DIR, config);
+        cache = new SimpleCache<String>(TEST_DIR, config);
 
         long start = System.nanoTime();
         List<Future<?>> futures = new ArrayList<Future<?>>();
