@@ -63,6 +63,9 @@ public class StorageManager{
 	 */
 	private final StorageMode storageMode;
 	
+	/**
+	 * Current start mode
+	 */
 	private final StartMode startMode;
 	
 	/**
