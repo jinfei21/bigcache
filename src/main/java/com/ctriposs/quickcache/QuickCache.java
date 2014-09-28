@@ -367,7 +367,7 @@ public class QuickCache<K> implements ICache<K> {
 									synchronized (oldPointer) {
 										oldPointer = cache.pointerMap.get(wKey);
 										if(oldPointer!=null) {//client may delete key
-											if(oldPointer.getLastAccessTime()==meta.getLastAccessTime()) {
+											if(oldPointer.getLastAccessTime()==meta.getLastAccessTime()&&oldPointer.getBlock()==block) {
 												
 												storageManager.markDirty(oldPointer);
 												Pointer pointer = storageManager.store(wKey.getKey(),item.getValue(),meta.getTtl());

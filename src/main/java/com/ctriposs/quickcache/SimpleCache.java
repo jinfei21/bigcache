@@ -288,7 +288,7 @@ public class SimpleCache<K> implements ICache<K> {
 						WrapperKey wKey = new WrapperKey(item.getKey());
 						Pointer oldPointer = pointerMap.get(wKey);
 						if(oldPointer != null) {		
-							if(oldPointer.getBlock() == block) {
+							if(oldPointer.getBlock() == block&&meta.getLastAccessTime()==oldPointer.getLastAccessTime()) {
 								Pointer newPointer = storageManager.store(item.getKey(), item.getValue(), meta.getTtl());							
 								if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 									storageManager.markDirty(oldPointer);								
