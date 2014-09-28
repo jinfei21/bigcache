@@ -315,7 +315,7 @@ public class StorageBlock implements IBlock {
 		int realDirtySize = 0;
 		for (int i = 0; i < head.getCurrentMetaCount(); i++) {
 			Meta meta = readMeta(i);
-			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()) {
+			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()||meta.getTtl() == Meta.TTL_NEVER_EXPIRE) {
 				list.add(meta);
 			}else {
 				realDirtySize = meta.getKeySize()+meta.getValueSize()+Meta.META_SIZE;

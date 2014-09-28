@@ -5,12 +5,12 @@ import com.ctriposs.quickcache.IBlock;
 
 public class Pointer {
 
-	private IBlock block;
-	private int metaOffset;
-	private int keySize;
-	private int valueSize;
-	private long lastAccessTime = -1; // -1 means for delete.
-	private long ttl = -1L;			  // -1 means for never expire.
+	private final IBlock block;
+	private final int metaOffset;
+	private final int keySize;
+	private final int valueSize;
+	private long lastAccessTime; 
+	private final long ttl;			  // -1 means for never expire;0 means for delete
 	
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl) {
 		this.block = block;
@@ -22,6 +22,7 @@ public class Pointer {
 	}
 
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl, long lastAccessTime) {
+		
 		this(block, metaOffset, keySize, valueSize, ttl);
 		this.lastAccessTime = lastAccessTime;
 	}
@@ -30,33 +31,18 @@ public class Pointer {
 		return block;
 	}
 
-	public void setBlock(IBlock block) {
-		this.block = block;
-	}
-
 	public int getMetaOffset() {
 		return metaOffset;
-	}
-
-	public void setMetaOffset(int metaOffset) {
-		this.metaOffset = metaOffset;
 	}
 
 	public long getLastAccessTime() {
 		return lastAccessTime;
 	}
 
-	public void setLastAccessTime(long lastAccessTime) {
-		this.lastAccessTime = lastAccessTime;
-	}
-
 	public long getTtl() {
 		return ttl;
 	}
 
-	public void setTtl(long ttl) {
-		this.ttl = ttl;
-	}
 	
     /**
      * Is the cached item expired
@@ -64,7 +50,7 @@ public class Pointer {
      * @return expired or not
      */
     public boolean isExpired() {
-	    if (ttl <= 0) return false; 				// never expire
+	    if (ttl < 0) return false; 				// never expire
 	    if (lastAccessTime < 0) return false; 		// not initialized
 	    return System.currentTimeMillis() - lastAccessTime > ttl;
     }
@@ -73,19 +59,8 @@ public class Pointer {
 		return keySize;
 	}
 
-
-	public void setKeySize(int keySize) {
-		this.keySize = keySize;
-	}
-
-
 	public int getValueSize() {
 		return valueSize;
-	}
-
-
-	public void setValueSize(int valueSize) {
-		this.valueSize = valueSize;
 	}
 
 	public int getItemSize() {
