@@ -43,6 +43,9 @@ public class Pointer {
 		return ttl;
 	}
 
+	public void setLastAccessTime(long lastAccessTime) {
+		this.lastAccessTime = lastAccessTime;
+	}
 	
     /**
      * Is the cached item expired

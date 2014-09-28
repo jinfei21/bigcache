@@ -167,37 +167,34 @@ public class SimpleCache<K> implements ICache<K> {
         }
         WrapperKey wKey = new WrapperKey(ToBytes(key));
    
-		Pointer oldPointer = pointerMap.get(wKey);
-			
-		if (oldPointer != null) {
-			synchronized (oldPointer) {
-				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-				if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-					storageManager.markDirty(oldPointer);
-				}else {
-					//只能一个解决冲突
-					try {
-						lockCenter.writeLock(wKey.hashCode());
-						oldPointer = pointerMap.get(wKey);
-						if(oldPointer!=null) {
-							storageManager.markDirty(oldPointer);
-						}
-						pointerMap.put(wKey, newPointer);
-						usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);
-					}finally {
-						lockCenter.writeUnlock(wKey.hashCode());
+		Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+
+		while(true){
+			Pointer oldPointer = pointerMap.get(wKey);
+			if(oldPointer != null){
+				if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+						storageManager.markDirty(oldPointer);
+						break;
 					}
-				}				
-			}
-		}else {
-			//只能一个client新增
-			try {
-				lockCenter.writeLock(wKey.hashCode());
-				Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-				pointerMap.put(wKey, newPointer);
-				usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
-			}finally {
-				lockCenter.writeUnlock(wKey.hashCode());
+				}else {
+					storageManager.markDirty(newPointer);
+					break;
+				}
+			}else{
+				//只能一个client新增
+				try {
+					lockCenter.writeLock(wKey.hashCode());
+					oldPointer = pointerMap.get(wKey);
+					if(oldPointer != null) {
+						storageManager.markDirty(oldPointer);
+					}
+					pointerMap.put(wKey, newPointer);
+					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
+				}finally {
+					lockCenter.writeUnlock(wKey.hashCode());
+				}
+				break;
 			}
 		}
 	}
@@ -244,7 +241,7 @@ public class SimpleCache<K> implements ICache<K> {
 		return 1.0 * hitCounter.get() / (hitCounter.get() + missCounter.get());
 	}
     
-	abstract class DaemonWorker<K> implements Runnable {
+	abstract static class DaemonWorker<K> implements Runnable {
 
 	    private WeakReference<SimpleCache> cacheHolder;
 	    private ScheduledExecutorService scheduler;

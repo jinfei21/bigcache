@@ -17,7 +17,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import com.ctriposs.quickcache.IBlock;
-import com.ctriposs.quickcache.IStorage;
 import com.ctriposs.quickcache.utils.FileUtil;
 
 public class StorageManager {
@@ -64,9 +63,9 @@ public class StorageManager {
 	 */
 	private final StorageMode storageMode;
 
-    /**
-     * Start mode
-     */
+	/**
+	 * Current start mode
+	 */
 	private final StartMode startMode;
 	
 	/**
@@ -120,14 +119,19 @@ public class StorageManager {
 			for(File file:list) {
 				IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
 				block.getAllValidMeta();
-				usedBlocks.add(block);			
+				if(block.getMetaCount() == 0) {
+					freeBlocks.offer(block);
+				}else {
+					usedBlocks.add(block);					
+				}
+			
 			}
 			break;
 		}
 				
 		for (int i = list.size(); i < initialNumberOfBlocks; i++) {
-			IBlock storageBlock = createNewBlock(i);
-			freeBlocks.offer(storageBlock);
+			IBlock block = createNewBlock(i);
+			freeBlocks.offer(block);
 			blockCount.incrementAndGet();
 		}		
 		this.activeBlock = freeBlocks.poll();
@@ -148,12 +152,13 @@ public class StorageManager {
 					WrapperKey wKey = new WrapperKey(item.getKey());
 					Pointer oldPointer = map.get(wKey);
 					if(oldPointer==null) {
-						Pointer pointer = new Pointer(block, meta.getIndex(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
+						Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 						map.put(wKey, pointer);
 					}else {
 						if(oldPointer.getLastAccessTime()<meta.getLastAccessTime()) {
-							Pointer pointer = new Pointer(block, meta.getIndex(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
+							Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 							map.put(wKey, pointer);
+							markDirty(oldPointer);
 						}
 					}
 				}	

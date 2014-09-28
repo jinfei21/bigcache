@@ -29,7 +29,7 @@ import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
 public class QuickCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
-	public static final long DEFAULT_MIGRATE_INTERVAL = 10 * 60 * 1000;
+	public static final long DEFAULT_MIGRATE_INTERVAL = 1 * 60 * 1000;
 	
 	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
 	public static final int DEFAULT_CONCURRENCY_LEVEL = 8; // 256 concurrent level
@@ -297,7 +297,7 @@ public class QuickCache<K> implements ICache<K> {
 		return 1.0 * hitCounter.get() / (hitCounter.get() + missCounter.get());
 	}
     
-	abstract class DaemonWorker<K> implements Runnable {
+	abstract static class DaemonWorker<K> implements Runnable {
 
 	    private WeakReference<QuickCache> cacheHolder;
 	    private ScheduledExecutorService scheduler;
