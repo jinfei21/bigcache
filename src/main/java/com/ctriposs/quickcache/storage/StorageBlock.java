@@ -168,8 +168,11 @@ public class StorageBlock implements IBlock {
 	public byte[] remove(Pointer pointer) throws IOException {
 
 		underlyingStorage.put(pointer.getMetaOffset() + Meta.TTL_OFFSET, ByteUtil.toBytes(Meta.TTL_DELETE));	
-		byte bytes[] = new byte[pointer.getValueSize()];		
-		underlyingStorage.get(pointer.getMetaOffset() + pointer.getKeySize(), bytes);
+		byte bytes[] = new byte[4];
+		underlyingStorage.get(pointer.getMetaOffset()+ Meta.KEY_OFFSET, bytes);
+		int itemOffset = ByteUtil.ToInt(bytes);
+		bytes = new byte[pointer.getValueSize()];		
+		underlyingStorage.get(itemOffset + pointer.getKeySize(), bytes);
 		dirtyStorage.addAndGet(pointer.getItemSize()+Meta.META_SIZE);
 		return bytes;
 	}
