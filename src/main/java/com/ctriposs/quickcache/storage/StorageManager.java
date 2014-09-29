@@ -93,7 +93,7 @@ public class StorageManager {
 			long maxOffHeapMemorySize, double dirtyRatioThreshold, StartMode startMode) throws IOException {
 		this.dirtyRatioThreshold = dirtyRatioThreshold;
 		
-		if (storageMode != StorageMode.PureFile) {
+		if (storageMode != StorageMode.PureFile||storageMode != StorageMode.MapFile) {
 			this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
 		} else {
 			this.allowedOffHeapModeBlockCount = 0;

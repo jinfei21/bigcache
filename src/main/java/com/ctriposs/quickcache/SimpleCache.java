@@ -63,9 +63,6 @@ public class SimpleCache<K> implements ICache<K> {
     /** The # of migrate for dirty block recycle. */
     private AtomicLong migrateErrorCounter = new AtomicLong();
 	
-    /**	The lock manager for key during expire or migrate */
-    private LockCenter lockCenter;
-	
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
     
@@ -103,9 +100,8 @@ public class SimpleCache<K> implements ICache<K> {
 			this.storageManager.loadPointerMap(pointerMap);
 		}
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
-		this.scheduler.scheduleAtFixedRate(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
-		this.scheduler.scheduleAtFixedRate(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
-		this.lockCenter = new LockCenter(config.getConcurrencyLevel());
+		this.scheduler.scheduleWithFixedDelay(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
+		this.scheduler.scheduleWithFixedDelay(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
     }
 	
     private void checkKey(K key) {
@@ -181,29 +177,19 @@ public class SimpleCache<K> implements ICache<K> {
 					storageManager.markDirty(newPointer);
 					break;
 				}
-			}else{
-				//只能一个client新增
-				try {
-					lockCenter.writeLock(wKey.hashCode());
-					oldPointer = pointerMap.get(wKey);
-					if(oldPointer != null) {
-						if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
-							if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-								storageManager.markDirty(oldPointer);
-								break;
-							}else {
-								continue;
-							}
-						}else {
-							break;
-						}						
+			} else {
+
+				Pointer checkPointer = pointerMap.putIfAbsent(wKey, newPointer);
+				if (checkPointer != null) {
+					if (checkPointer.getLastAccessTime() < newPointer.getLastAccessTime()) {
+						continue;
+					} else {
+						break;
 					}
-					pointerMap.put(wKey, newPointer);
-					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
-				}finally {
-					lockCenter.writeUnlock(wKey.hashCode());
+				} else {
+					usedSize.addAndGet(newPointer.getItemSize() + Meta.META_SIZE);
+					break;
 				}
-				break;
 			}
 		}
 	}

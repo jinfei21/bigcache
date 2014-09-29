@@ -262,7 +262,6 @@ public class StorageBlock implements IBlock {
 		head.reset();
 		dirtyStorage.set(Head.HEAD_SIZE);
 		usedStorage.set(0);		
-		underlyingStorage.free();
 	}
 
 	@Override

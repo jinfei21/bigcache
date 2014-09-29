@@ -60,7 +60,7 @@ public class SimpleCacheUnitTest {
         assertEquals(new String(cache.get(4)), "E");
         assertEquals(new String(cache.get(5)), "F");
     }
-
+/*
     @Test
     public void testPut() throws Exception {
         cache = cache();
@@ -90,7 +90,7 @@ public class SimpleCacheUnitTest {
         assertTrue(cache.contains(0));
         assertFalse(cache.contains(6));
     }
-
+*/
     @After
     public void close() throws IOException {
         if (cache == null)
