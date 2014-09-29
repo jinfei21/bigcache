@@ -117,6 +117,7 @@ public class SimpleCache<K> implements ICache<K> {
 		WrapperKey wKey = new WrapperKey(ToBytes(key));
 
 		Pointer pointer = pointerMap.get(wKey);
+		System.out.print("get:"+pointer+"---");
 		if (pointer == null) {
 			missCounter.incrementAndGet();
 			return null;
@@ -166,14 +167,16 @@ public class SimpleCache<K> implements ICache<K> {
         }
         WrapperKey wKey = new WrapperKey(ToBytes(key));
    
+       
 		Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-
+		System.out.println("store:"+newPointer+"------"+new String(value).toString());
 		while(true){
 			Pointer oldPointer = pointerMap.get(wKey);
 			if(oldPointer != null){
-				if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+				if(oldPointer.getLastAccessTime()<=newPointer.getLastAccessTime()) {
 					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
-						storageManager.markDirty(oldPointer);
+						storageManager.markDirty(oldPointer); 
+						System.out.println("put:"+newPointer+"------"+new String(value).toString());
 						break;
 					}
 				}else {
@@ -183,6 +186,7 @@ public class SimpleCache<K> implements ICache<K> {
 			} else {
 
 				Pointer checkPointer = pointerMap.putIfAbsent(wKey, newPointer);
+				System.out.println("put:"+newPointer+"------"+new String(value).toString());
 				if (checkPointer != null) {
 					if (checkPointer.getLastAccessTime() > newPointer.getLastAccessTime()) {
 						storageManager.markDirty(newPointer);
@@ -194,6 +198,8 @@ public class SimpleCache<K> implements ICache<K> {
 				}
 			}
 		}
+		
+		System.out.println();
 	}
 
 	private byte[] ToBytes(K key) throws IOException {
