@@ -76,13 +76,13 @@ public class StorageManagerUnitTest {
         byte[] smallTestBytes = smallTestString.getBytes();
         pointer = storageManager.store(keyBytes, smallTestBytes, Meta.TTL_NEVER_EXPIRE);
         assertTrue((testBytes.length + smallTestBytes.length) == storageManager.getUsed());
-        assertTrue(1 == pointer.getMetaOffset());
+        assertTrue((Head.HEAD_SIZE + Meta.META_SIZE) == pointer.getMetaOffset());
         assertTrue(smallTestBytes.length == pointer.getValueSize());
 
         // update to bigger
         pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
         assertTrue(5L == storageManager.getDirty());
-        assertTrue(2 == pointer.getMetaOffset());
+        assertTrue((Head.HEAD_SIZE + 2 * Meta.META_SIZE) == pointer.getMetaOffset());
         assertTrue(testBytes.length == pointer.getValueSize());
         assertTrue((2 * testBytes.length + smallTestBytes.length) == storageManager.getUsed());
 
@@ -93,8 +93,8 @@ public class StorageManagerUnitTest {
 
         assertTrue(2 == storageManager.getTotalBlockCount());
         assertTrue(1 == storageManager.getFreeBlockCount());
-        assertTrue(1 == storageManager.getUsedBlockCount());
-        assertTrue(1024 * 1024 * 128 == storageManager.getCapacity());
+        assertTrue(0 == storageManager.getUsedBlockCount());
+        assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
 
         // free
         storageManager.free();
