@@ -2,12 +2,13 @@ package com.ctriposs.quickcache.storage;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -143,7 +144,7 @@ public class StorageManager {
 	
 	public void loadPointerMap(ConcurrentMap<WrapperKey, Pointer> map)throws IOException {
         synchronized (this) {
-        	ConcurrentMap<WrapperKey, Long> deleteMap = new ConcurrentHashMap<WrapperKey, Long>();
+        	Map<WrapperKey, Long> deleteMap = new HashMap<WrapperKey, Long>();
         	Iterator<IBlock> it = usedBlocks.iterator();
         	while (it.hasNext()) {
         		IBlock block = it.next();
@@ -157,13 +158,27 @@ public class StorageManager {
 					WrapperKey wKey = new WrapperKey(item.getKey());
 					
 					if(meta.getTtl()==0) {
-						deleteMap.put(wKey, meta.getLastAccessTime());
+						Long accesstime = deleteMap.get(wKey);
+						if(accesstime==null) {
+							deleteMap.put(wKey, meta.getLastAccessTime());
+						}else {
+							if(accesstime<meta.getLastAccessTime()) {
+								deleteMap.put(wKey, meta.getLastAccessTime());
+							}
+						}
+						
 					}else {
 						Long accesstime = deleteMap.get(wKey);
 						Pointer newPointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 						if(accesstime==null) {
-							
-							map.put(wKey, newPointer);
+							Pointer oldPointer = map.get(wKey);
+							if(oldPointer==null) {
+								map.put(wKey, newPointer);
+							}else {
+								if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+									map.put(wKey, newPointer);							
+								}
+							}
 						}else {
 							if(accesstime<newPointer.getLastAccessTime()) {
 								map.put(wKey, newPointer);

@@ -22,11 +22,13 @@ public class FunctionTest extends TestCase {
 			
 			String str = "123";
 			byte res[] = cache.get("2");
-			System.out.println("get2:"+new String(res));
+			//System.out.println("get2:"+new String(res));
 			cache.put("1", "hello1".getBytes());
 			cache.put("2", "hello2".getBytes());
 			cache.put("3", "hell03".getBytes());
-			cache.put("2", "hello4".getBytes());
+			for(int i=0;i<5;i++) {
+				cache.put("2", ("hello"+i).getBytes());
+			}
 			
 			res = cache.get("1");
 			System.out.println("get1:"+new String(res));

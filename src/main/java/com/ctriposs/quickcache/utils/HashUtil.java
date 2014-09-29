@@ -3,6 +3,7 @@ package com.ctriposs.quickcache.utils;
 public class HashUtil {
 
     public static int JSHash(byte[] bytes) {
+    
         int hash = 1315423911;
 
         for (int i = 0; i < bytes.length; i++) {

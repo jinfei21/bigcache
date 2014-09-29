@@ -113,7 +113,6 @@ public class StorageBlock implements IBlock {
 		//write head
 		//underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.incMetaCount()));	
 		head.incMetaCount();
-		System.out.println("add:"+index+":"+head.getCurrentMetaCount());
 		//write meta	
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
@@ -192,7 +191,6 @@ public class StorageBlock implements IBlock {
 		
 			underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
 			underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.getCurrentMetaCount()));
-			System.out.println("close:"+index+":"+head.getCurrentMetaCount());
 			underlyingStorage.close();
 		}
 	}
