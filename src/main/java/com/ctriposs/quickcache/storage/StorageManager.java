@@ -104,29 +104,28 @@ public class StorageManager {
 		this.capacityPerBlock = capacityPerBlock;
 		this.dir = dir;
 		initializeBlocks(new File(dir), initialNumberOfBlocks);
-		
 	}
 	
-	private void initializeBlocks(File directory,int initialNumberOfBlocks) throws IOException {
+	private void initializeBlocks(File directory, int initialNumberOfBlocks) throws IOException {
 		List<File> list = null;
 		switch (startMode) {
-		case None:
-			FileUtil.deleteDirectory(directory);
-			list = FileUtil.listFiles(directory);			
-			break;
-		case File:
-			list = FileUtil.listFiles(directory);
-			for(File file:list) {
-				IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
-				block.getAllValidMeta();
-				if(block.getMetaCount() == 0) {
-					freeBlocks.offer(block);
-				}else {
-					usedBlocks.add(block);					
-				}
-			
-			}
-			break;
+            case None:
+                FileUtil.deleteDirectory(directory);
+                list = FileUtil.listFiles(directory);
+                break;
+            case File:
+                list = FileUtil.listFiles(directory);
+                for(File file:list) {
+                    IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
+                    block.getAllValidMeta();
+                    if(block.getMetaCount() == 0) {
+                        freeBlocks.offer(block);
+                    }else {
+                        usedBlocks.add(block);
+                    }
+
+                }
+                break;
 		}
 				
 		for (int i = list.size(); i < initialNumberOfBlocks; i++) {
@@ -135,7 +134,7 @@ public class StorageManager {
 			blockCount.incrementAndGet();
 		}		
 		this.activeBlock = freeBlocks.poll();
-		if(this.activeBlock==null) {
+		if(this.activeBlock == null) {
 			this.activeBlock = new StorageBlock(dir, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
 		}
 		this.activeBlock.active();
@@ -204,7 +203,14 @@ public class StorageManager {
         }
 	}
 
-	
+    /**
+     * Store the value
+     * @param key the key
+     * @param value the data
+     * @param ttl time-to-live
+     * @return a pointer
+     * @throws IOException
+     */
 	public Pointer store(byte[] key, byte[] value, long ttl) throws IOException {
 		Pointer pointer = activeBlock.store(key, value, ttl);
 		if (pointer != null) {// success
@@ -252,7 +258,10 @@ public class StorageManager {
 		return pointer.getBlock().markDirty(pointer);
 	}
 
-
+    /**
+     * Get the capacity of all used storage
+     * @return used storage capacity
+     */
 	public long getUsed() {
 		long usedStorage = 0;
 		for(IBlock block : usedBlocks) {
@@ -271,6 +280,10 @@ public class StorageManager {
 		this.freeBlocks.offer(activeBlock);
 	}
 
+    /**
+     * Get the dirty storage size
+     * @return dirty storage size
+     */
 	public long getDirty() {
 		long dirtyStorage = 0;
 		for(IBlock block : usedBlocks) {
@@ -279,7 +292,10 @@ public class StorageManager {
 		return dirtyStorage + activeBlock.getDirty();
 	}
 
-
+    /**
+     * Get the capacity of all blocks (active, used, free)
+     * @return total capacity
+     */
 	public long getCapacity() {
         long totalCapacity = 0;
         for(IBlock block : getAllBlocks()) {
@@ -288,9 +304,13 @@ public class StorageManager {
 		return totalCapacity;
 	}
 
-
+    /**
+     * Get the proportion of dirty storage within total capacity
+     * @return the dirty ratio
+     */
 	public double getDirtyRatio() {
-		return (getDirty() * 1.0) / getCapacity();
+		double d = (getDirty() * 1.0) / getCapacity();
+        return d;
 	}
 	
 	public int getFreeBlockCount() {

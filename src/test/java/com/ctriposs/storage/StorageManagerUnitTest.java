@@ -1,5 +1,6 @@
 package com.ctriposs.storage;
 
+import com.ctriposs.quickcache.storage.Head;
 import com.ctriposs.quickcache.storage.Meta;
 import com.ctriposs.quickcache.storage.Pointer;
 import com.ctriposs.quickcache.storage.StorageManager;
@@ -8,6 +9,7 @@ import com.ctriposs.quickcache.util.TestUtil;
 import com.ctriposs.quickcache.utils.FileUtil;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.File;
@@ -18,6 +20,7 @@ import java.util.Collection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class StorageManagerUnitTest {
     private static String testDir = TestUtil.TEST_BASE_DIR + "unit/storage_manager_test/";
 
@@ -32,20 +35,20 @@ public class StorageManagerUnitTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() throws IOException {
         Object[][] data = { { StorageMode.PureFile, 0 },
-                { StorageMode.MapFile, 2 * 1000 * 1024 * 1024 },
-                { StorageMode.OffHeapFile, 2 * 1000 * 1024 * 1024 } };
+                { StorageMode.MapFile, 2 * 100 * 1024 * 1024 },
+                { StorageMode.OffHeapFile, 2 * 100 * 1024 * 1024 } };
         return Arrays.asList(data);
     }
 
     @Test
     public void testBasic() throws IOException {
-        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.None); // 2M Total
+        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.None);
 
         assertTrue(2 == storageManager.getTotalBlockCount());
         assertTrue(1 == storageManager.getFreeBlockCount());
         assertTrue(0 == storageManager.getUsedBlockCount());
-        assertTrue(1024 * 1024 * 128 == storageManager.getCapacity());
-        assertTrue(0L == storageManager.getDirtyRatio());
+        assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
+        assertTrue(5L == storageManager.getDirty());
         assertTrue(0L == storageManager.getUsed());
 
         String testString = "Test String";
@@ -55,18 +58,18 @@ public class StorageManagerUnitTest {
 
         // store
         Pointer pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
-        assertTrue(0L == storageManager.getDirty());
-        assertTrue(storageManager.getUsedBlockCount() == 1);
-        assertTrue(0 == pointer.getMetaOffset());
+        assertTrue(5L == storageManager.getDirty());
+        assertTrue(storageManager.getUsedBlockCount() == 0);
+        assertTrue(Head.HEAD_SIZE == pointer.getMetaOffset());
         assertTrue(keyBytes.length == pointer.getKeySize());
         assertTrue(testBytes.length == storageManager.getUsed());
 
         // retrieve
         byte[] resultBytes = storageManager.retrieve(pointer);
         assertEquals(testString, new String(resultBytes));
-        assertTrue(0 == pointer.getMetaOffset());
+        assertTrue(Head.HEAD_SIZE == pointer.getMetaOffset());
         assertTrue(keyBytes.length == pointer.getKeySize());
-        assertTrue(testBytes.length == storageManager.getUsed());
+        assertTrue(testBytes.length == resultBytes.length);
 
         // update to small
         String smallTestString = "Test Str";
@@ -78,7 +81,7 @@ public class StorageManagerUnitTest {
 
         // update to bigger
         pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
-        assertTrue(0L == storageManager.getDirty());
+        assertTrue(5L == storageManager.getDirty());
         assertTrue(2 == pointer.getMetaOffset());
         assertTrue(testBytes.length == pointer.getValueSize());
         assertTrue((2 * testBytes.length + smallTestBytes.length) == storageManager.getUsed());
