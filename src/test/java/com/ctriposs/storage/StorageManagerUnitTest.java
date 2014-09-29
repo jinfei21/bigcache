@@ -39,12 +39,12 @@ public class StorageManagerUnitTest {
 
     @Test
     public void testBasic() throws IOException {
-        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.None); // 2M Total
+        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.None);
 
         assertTrue(2 == storageManager.getTotalBlockCount());
         assertTrue(1 == storageManager.getFreeBlockCount());
         assertTrue(0 == storageManager.getUsedBlockCount());
-        assertTrue(1024 * 1024 * 128 == storageManager.getCapacity());
+        assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
         assertTrue(0L == storageManager.getDirtyRatio());
         assertTrue(0L == storageManager.getUsed());
 

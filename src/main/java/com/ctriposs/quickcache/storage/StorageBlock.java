@@ -76,15 +76,15 @@ public class StorageBlock implements IBlock {
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
-		case PureFile:
-			this.underlyingStorage = new PureFileStorage(file, capacity);
-			break;
-		case MapFile:
-			this.underlyingStorage = new MapFileStorage(file, capacity);
-			break;
-		case OffHeapFile:
-			this.underlyingStorage = new OffHeapStorage(capacity);
-			break;
+            case PureFile:
+                this.underlyingStorage = new PureFileStorage(file, capacity);
+                break;
+            case MapFile:
+                this.underlyingStorage = new MapFileStorage(file, capacity);
+                break;
+            case OffHeapFile:
+                this.underlyingStorage = new OffHeapStorage(capacity);
+                break;
 		}
 		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE + Head.HEAD_SIZE;
 		this.head = loadHead();
@@ -128,7 +128,7 @@ public class StorageBlock implements IBlock {
 	}
 
 	@Override
-	public Pointer store(byte[] key,byte[] value,long ttl) throws IOException {
+	public Pointer store(byte[] key,byte[] value, long ttl) throws IOException {
 		int payloadLength = key.length + value.length;
 		Allocation allocation = allocate(payloadLength);
 		if (allocation == null) return null; // not enough storage available

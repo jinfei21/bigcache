@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class Meta implements Serializable {
 
 	public static final int DEFAULT_META_AREA_SIZE = 4 * 1024 * 1024; // 4M
-	public static final int META_SIZE = (Integer.SIZE+Integer.SIZE+Integer.SIZE+Long.SIZE+Long.SIZE)/Byte.SIZE;
+	public static final int META_SIZE = (Integer.SIZE + Integer.SIZE + Integer.SIZE + Long.SIZE + Long.SIZE) / Byte.SIZE;
 	public static final int KEY_OFFSET = 0;
 	public static final int KEY_SIZE_OFFSET = 4;
 	public static final int VALUE_SIZE_OFFSET = 8;
@@ -13,12 +13,13 @@ public class Meta implements Serializable {
 	public static final int TTL_OFFSET = 20;
 	public static final long TTL_NEVER_EXPIRE = -1L;
 	public static final long TTL_DELETE = 0L;
+
 	private int keyOffSet;
 	private int keySize;
 	private int valueSize;
 	private long lastAccessTime;
-	private long ttl;//-1 means never expire;0 means delete
-	private int metaOffset = -1;//-1 means invalid
+	private long ttl;   //-1 means never expire;0 means delete
+	private int metaOffset = -1;    //-1 means invalid
 
 	public Meta() {
 		this.keyOffSet = 0;
