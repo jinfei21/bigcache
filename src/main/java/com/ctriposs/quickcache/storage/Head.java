@@ -70,7 +70,7 @@ public class Head {
 	public void reset() {
 		activeFlag = FLAG_FREE;
 		currentMetaOffset.set(HEAD_SIZE);
-		currentItemOffset.set(HEAD_SIZE+Meta.DEFAULT_META_AREA_SIZE);
+		currentItemOffset.set(HEAD_SIZE + Meta.DEFAULT_META_AREA_SIZE);
 		metaCount.set(0);
 	}
 	

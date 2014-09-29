@@ -278,7 +278,7 @@ public class StorageManager {
 		for(IBlock block : usedBlocks) {
 			usedStorage += block.getUsed();
 		}
-		return usedStorage;
+		return usedStorage + activeBlock.getUsed();
 	}
 
 	public void free() {
