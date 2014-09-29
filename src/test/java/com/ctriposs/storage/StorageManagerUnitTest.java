@@ -57,7 +57,7 @@ public class StorageManagerUnitTest {
 
         // store
         Pointer pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
-        assertTrue(0L == storageManager.getDirty());
+        assertTrue(5L == storageManager.getDirty());
         assertTrue(storageManager.getUsedBlockCount() == 1);
         assertTrue(0 == pointer.getMetaOffset());
         assertTrue(keyBytes.length == pointer.getKeySize());
@@ -80,7 +80,7 @@ public class StorageManagerUnitTest {
 
         // update to bigger
         pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
-        assertTrue(0L == storageManager.getDirty());
+        assertTrue(5L == storageManager.getDirty());
         assertTrue(2 == pointer.getMetaOffset());
         assertTrue(testBytes.length == pointer.getValueSize());
         assertTrue((2 * testBytes.length + smallTestBytes.length) == storageManager.getUsed());

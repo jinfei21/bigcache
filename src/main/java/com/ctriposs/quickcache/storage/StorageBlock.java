@@ -131,8 +131,10 @@ public class StorageBlock implements IBlock {
 	public Pointer store(byte[] key,byte[] value, long ttl) throws IOException {
 		int payloadLength = key.length + value.length;
 		Allocation allocation = allocate(payloadLength);
-		if (allocation == null) return null; // not enough storage available
-		Pointer pointer = store(allocation, key,value,ttl,payloadLength);
+		if (allocation == null)
+            return null; // not enough storage available
+
+		Pointer pointer = store(allocation, key,value, ttl, payloadLength);
 		return pointer;
 	}
 
