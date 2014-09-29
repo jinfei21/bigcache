@@ -28,9 +28,10 @@ public class Meta implements Serializable {
 		this.ttl = 0;
 	}
 	
-	public Meta(int metaOffset,int keyOffSet,int keySize,int valuesize,long lastAccessTime,long ttl) {
+	public Meta(int metaOffset,int keyOffSet,int keySize,int valueSize,long lastAccessTime,long ttl) {
 		this.keyOffSet = keyOffSet;
 		this.keySize = keySize;
+		this.valueSize = valueSize;
 		this.lastAccessTime = lastAccessTime;
 		this.ttl = ttl;
 		this.metaOffset = metaOffset;

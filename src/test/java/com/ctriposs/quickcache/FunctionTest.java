@@ -27,17 +27,15 @@ public class FunctionTest extends TestCase {
 			SimpleCache<String> cache = new SimpleCache<String>("D:\\data", config);
 			
 			String str = "123";
-
+			byte res[] = cache.get("2");
+			System.out.println("get2:"+new String(res));
 			cache.put("1", "hello1".getBytes());
 			cache.put("2", "hello2".getBytes());
 			cache.put("3", "hell03".getBytes());
 			cache.put("2", "hello4".getBytes());
 			
-			byte res[] = cache.get("1");
+			res = cache.get("1");
 			System.out.println("get1:"+new String(res));
-			
-			res = cache.delete("1");
-			System.out.println("delete1:"+new String(res));
 			
 			res = cache.get("2");
 			System.out.println("get2:"+new String(res));
