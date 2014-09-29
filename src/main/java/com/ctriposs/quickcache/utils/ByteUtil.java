@@ -1,5 +1,7 @@
 package com.ctriposs.quickcache.utils;
 
+import java.io.*;
+
 public class ByteUtil {
 
 	public static byte[] toBytes(int n) {
@@ -38,6 +40,36 @@ public class ByteUtil {
 		bytes[0] = (byte) ((n >> 8) & 0xff);
 		return bytes;
 	}
+
+    public static byte[] toBytes(Object o) {
+        if (o instanceof String) {
+            return ((String) o).getBytes();
+        } else if (o instanceof byte[]) {
+            return ((byte[]) o);
+        } else if (o instanceof Serializable) {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            ObjectOutput out = null;
+            try {
+                out = new ObjectOutputStream(bos);
+                out.writeObject(o);
+                return bos.toByteArray();
+            } catch (Exception e) {
+                return null;
+            } finally {
+                try {
+                    if (out != null) {
+                        out.close();
+                    }
+                } catch (IOException e) {/**/}
+
+                try {
+                    bos.close();
+                } catch (IOException e) {/**/}
+            }
+        }
+
+        throw new RuntimeException("Fail to convert object to bytes");
+    }
 
 	public static short ToShort(byte[] bytes) {
 		return (short) (bytes[1] & 0xff | (bytes[0] & 0xff) << 8);

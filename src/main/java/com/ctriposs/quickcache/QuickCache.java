@@ -22,6 +22,9 @@ import com.ctriposs.quickcache.storage.StorageManager;
 import com.ctriposs.quickcache.storage.WrapperKey;
 import com.ctriposs.quickcache.utils.FileUtil;
 
+import static com.ctriposs.quickcache.utils.ByteUtil.toByte;
+import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
+
 
 public class QuickCache<K> implements ICache<K> {
 	
@@ -124,7 +127,7 @@ public class QuickCache<K> implements ICache<K> {
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();
 		checkKey(key);
-		WrapperKey wKey = new WrapperKey(ToBytes(key));
+		WrapperKey wKey = new WrapperKey(toBytes(key));
 		Pointer pointer = pointerMap.get(wKey);
 		if (pointer == null) {
 			missCounter.incrementAndGet();
@@ -147,7 +150,7 @@ public class QuickCache<K> implements ICache<K> {
 	public byte[] delete(K key) throws IOException {
 		deleteCounter.incrementAndGet();
 		checkKey(key);
-        WrapperKey wKey = new WrapperKey(ToBytes(key));
+        WrapperKey wKey = new WrapperKey(toBytes(key));
 		ReentrantReadWriteLock expireLock = null;
 		ReentrantReadWriteLock migrateLock = null;
 		if(lockCenter.isNeedLock()) {
@@ -205,7 +208,7 @@ public class QuickCache<K> implements ICache<K> {
             throw new IllegalArgumentException("value is null or too long");
         }
         
-        WrapperKey wKey = new WrapperKey(ToBytes(key));
+        WrapperKey wKey = new WrapperKey(toBytes(key));
         
 		ReentrantReadWriteLock expireLock = null;
 		ReentrantReadWriteLock migrateLock = null;
@@ -227,7 +230,7 @@ public class QuickCache<K> implements ICache<K> {
                 // update and get the new storage
 				synchronized (oldPointer) {
 					
-					Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
+					Pointer newPointer = storageManager.store(wKey.getKey(), value, ttl);
 					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 						storageManager.markDirty(oldPointer);
 					}else {
@@ -269,24 +272,6 @@ public class QuickCache<K> implements ICache<K> {
 
 	}
 	
-	private byte[] ToBytes(K key) throws IOException {
-		if(key instanceof byte[]) {
-			return (byte[])key;
-		} else if(key instanceof String){
-			return ((String) key).getBytes();
-		}else {
-		
-			try {
-				ByteArrayOutputStream byteOut = new ByteArrayOutputStream(); 
-				ObjectOutputStream objectOut = new ObjectOutputStream(byteOut);
-				objectOut.writeObject(key);
-				return byteOut.toByteArray();
-			} catch (IOException e) {
-				throw e;
-			}
-		}
-	}
-
 	@Override
 	public boolean contains(K key) {
 		return pointerMap.containsKey(key);

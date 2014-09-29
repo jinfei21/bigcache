@@ -11,36 +11,13 @@ import com.ctriposs.quickcache.CacheConfig.StorageMode;
 import junit.framework.TestCase;
 
 
-public class FunctionTest extends TestCase{
+public class FunctionTest extends TestCase {
 	
 	@Before
 	public void  setUP() {
 		
 	}
-	
-	@Test
-	public void testPut() {
-		
-		
-		
-	}
 
-	@Test
-	public void testDelete() {
-		
-		
-		
-	}
-	
-	
-	@Test
-	public void testGet() {
-		
-		
-		
-	}
-	
-	
 	public static void main(String args[]) {
 		
 		try {

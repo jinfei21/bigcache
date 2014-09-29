@@ -67,7 +67,7 @@ public class StorageBlock implements IBlock {
 	/**
 	 * Load existed storage block from file.
 	 *
-	 * @param dir the directory
+	 * @param file the directory
 	 * @param index the index
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
@@ -103,11 +103,11 @@ public class StorageBlock implements IBlock {
 	 * Stores the payload by the help of allocation.
 	 *
 	 * @param allocation the allocation
-	 * @param payload the payload
+	 * @param payloadLength the payload
 	 * @return the pointer
 	 * @throws IOException 
 	 */
-	public Pointer store(Allocation allocation, byte[] key,byte[] value,long ttl,int payloadLength) throws IOException {
+	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
 		Pointer pointer = new Pointer(this,allocation.metaOffset,key.length,value.length,ttl);
 		
 		//write head
@@ -123,7 +123,7 @@ public class StorageBlock implements IBlock {
 		underlyingStorage.put(allocation.itemOffset, key);
 		underlyingStorage.put(allocation.itemOffset + key.length, value);
 		//add stat
-		usedStorage.addAndGet(payloadLength+Meta.META_SIZE);
+		usedStorage.addAndGet(payloadLength + Meta.META_SIZE);
 		return pointer;
 	}
 
@@ -139,14 +139,14 @@ public class StorageBlock implements IBlock {
 	/**
 	 * Allocates storage for the payload, return null if not enough storage available.
 	 *
-	 * @param payload the payload
+	 * @param payloadLength the payload
 	 * @return the allocation
 	 */
 	protected Allocation allocate(int payloadLength) {
 		
 		int itemOffset = head.addAndGetCurrentItemOffset(payloadLength);
 		int metaOffset = head.addAndGetCurrentMetaOffset(Meta.META_SIZE);
-		if(capacity < itemOffset||metaCapacity < metaOffset){
+		if(capacity < itemOffset || metaCapacity < metaOffset){
 			return null;
 		}
 		
@@ -205,8 +205,8 @@ public class StorageBlock implements IBlock {
 		/**
 		 * Instantiates a new allocation.
 		 *
-		 * @param item offset
-		 * @param meta offset
+		 * @param itemOffset offset
+		 * @param metaOffset offset
 		 */
 		public Allocation(int itemOffset, int metaOffset) {
 			this.itemOffset = itemOffset;
