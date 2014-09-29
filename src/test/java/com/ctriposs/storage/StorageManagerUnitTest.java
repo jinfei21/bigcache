@@ -1,5 +1,6 @@
 package com.ctriposs.storage;
 
+import com.ctriposs.quickcache.storage.Head;
 import com.ctriposs.quickcache.storage.Meta;
 import com.ctriposs.quickcache.storage.Pointer;
 import com.ctriposs.quickcache.storage.StorageManager;
@@ -58,17 +59,17 @@ public class StorageManagerUnitTest {
         // store
         Pointer pointer = storageManager.store(keyBytes, testBytes, Meta.TTL_NEVER_EXPIRE);
         assertTrue(5L == storageManager.getDirty());
-        assertTrue(storageManager.getUsedBlockCount() == 1);
-        assertTrue(0 == pointer.getMetaOffset());
+        assertTrue(storageManager.getUsedBlockCount() == 0);
+        assertTrue(Head.HEAD_SIZE == pointer.getMetaOffset());
         assertTrue(keyBytes.length == pointer.getKeySize());
         assertTrue(testBytes.length == storageManager.getUsed());
 
         // retrieve
         byte[] resultBytes = storageManager.retrieve(pointer);
         assertEquals(testString, new String(resultBytes));
-        assertTrue(0 == pointer.getMetaOffset());
+        assertTrue(Head.HEAD_SIZE == pointer.getMetaOffset());
         assertTrue(keyBytes.length == pointer.getKeySize());
-        assertTrue(testBytes.length == storageManager.getUsed());
+        assertTrue(testBytes.length == resultBytes.length);
 
         // update to small
         String smallTestString = "Test Str";

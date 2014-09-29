@@ -258,7 +258,10 @@ public class StorageManager {
 		return pointer.getBlock().markDirty(pointer);
 	}
 
-
+    /**
+     * Get the capacity of all used storage
+     * @return used storage capacity
+     */
 	public long getUsed() {
 		long usedStorage = 0;
 		for(IBlock block : usedBlocks) {
