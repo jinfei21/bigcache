@@ -302,7 +302,8 @@ public class StorageManager {
      * @return the dirty ratio
      */
 	public double getDirtyRatio() {
-		return (getDirty() * 1.0) / getCapacity();
+		double d = (getDirty() * 1.0) / getCapacity();
+        return d;
 	}
 	
 	public int getFreeBlockCount() {

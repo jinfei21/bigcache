@@ -8,6 +8,7 @@ import com.ctriposs.quickcache.util.TestUtil;
 import com.ctriposs.quickcache.utils.FileUtil;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.File;
@@ -18,6 +19,7 @@ import java.util.Collection;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class StorageManagerUnitTest {
     private static String testDir = TestUtil.TEST_BASE_DIR + "unit/storage_manager_test/";
 
@@ -32,8 +34,8 @@ public class StorageManagerUnitTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() throws IOException {
         Object[][] data = { { StorageMode.PureFile, 0 },
-                { StorageMode.MapFile, 2 * 1000 * 1024 * 1024 },
-                { StorageMode.OffHeapFile, 2 * 1000 * 1024 * 1024 } };
+                { StorageMode.MapFile, 2 * 100 * 1024 * 1024 },
+                { StorageMode.OffHeapFile, 2 * 100 * 1024 * 1024 } };
         return Arrays.asList(data);
     }
 
@@ -45,7 +47,7 @@ public class StorageManagerUnitTest {
         assertTrue(1 == storageManager.getFreeBlockCount());
         assertTrue(0 == storageManager.getUsedBlockCount());
         assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
-        assertTrue(0L == storageManager.getDirtyRatio());
+        assertTrue(0.0 == storageManager.getDirtyRatio());
         assertTrue(0L == storageManager.getUsed());
 
         String testString = "Test String";
