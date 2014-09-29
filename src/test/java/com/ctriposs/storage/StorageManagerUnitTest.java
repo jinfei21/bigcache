@@ -47,7 +47,7 @@ public class StorageManagerUnitTest {
         assertTrue(1 == storageManager.getFreeBlockCount());
         assertTrue(0 == storageManager.getUsedBlockCount());
         assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
-        assertTrue(0.0 == storageManager.getDirtyRatio());
+        assertTrue(5L == storageManager.getDirty());
         assertTrue(0L == storageManager.getUsed());
 
         String testString = "Test String";

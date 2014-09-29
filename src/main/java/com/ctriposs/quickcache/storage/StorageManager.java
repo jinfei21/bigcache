@@ -277,6 +277,10 @@ public class StorageManager {
 		this.freeBlocks.offer(activeBlock);
 	}
 
+    /**
+     * Get the dirty storage size
+     * @return dirty storage size
+     */
 	public long getDirty() {
 		long dirtyStorage = 0;
 		for(IBlock block : usedBlocks) {

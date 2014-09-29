@@ -22,11 +22,13 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	/**
 	 * Stores the payload.
 	 *
-	 * @param payload the payload
+	 * @param key the key
+     * @param value the data
+     * @param ttl time-to-live
 	 * @return the pointer
 	 * @throws IOException
 	 */
-	Pointer store(byte[] key,byte[] value,long ttl) throws IOException;
+	Pointer store(byte[] key, byte[] value, long ttl) throws IOException;
 	
 	/**
 	 * Removes the payload and marks the used space as dirty.
