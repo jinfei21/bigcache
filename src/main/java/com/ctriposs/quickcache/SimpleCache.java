@@ -181,9 +181,8 @@ public class SimpleCache<K> implements ICache<K> {
 
 				Pointer checkPointer = pointerMap.putIfAbsent(wKey, newPointer);
 				if (checkPointer != null) {
-					if (checkPointer.getLastAccessTime() < newPointer.getLastAccessTime()) {
-						continue;
-					} else {
+					if (checkPointer.getLastAccessTime() > newPointer.getLastAccessTime()) {
+						storageManager.markDirty(newPointer);
 						break;
 					}
 				} else {
