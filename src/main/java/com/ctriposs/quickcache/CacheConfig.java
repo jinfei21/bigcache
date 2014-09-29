@@ -14,7 +14,7 @@ public class CacheConfig {
     private long migrateInterval = QuickCache.DEFAULT_MIGRATE_INTERVAL;
     private double dirtyRatioThreshold = QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD;
     private StorageMode storageMode = StorageMode.PureFile;
-    private StartMode startMode = StartMode.None;
+    private StartMode startMode = StartMode.ClearOldFile;
     
 	public int getCapacityPerBlock() {
 		return capacityPerBlock;
@@ -119,7 +119,7 @@ public class CacheConfig {
 	}
 	
 	public enum StartMode {
-		None,
-		File
+		ClearOldFile,
+		RecoveryFromFile
 	}
 }

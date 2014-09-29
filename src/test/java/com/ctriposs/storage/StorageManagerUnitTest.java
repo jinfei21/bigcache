@@ -42,7 +42,7 @@ public class StorageManagerUnitTest {
 
     @Test
     public void testBasic() throws IOException {
-        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.None);
+        storageManager = new StorageManager(testDir, 128 * 1024 * 1024, 2, storageMode, size, 0.5, StartMode.ClearOldFile);
 
         assertTrue(2 == storageManager.getTotalBlockCount());
         assertTrue(1 == storageManager.getFreeBlockCount());

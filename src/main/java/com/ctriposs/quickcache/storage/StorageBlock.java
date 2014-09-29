@@ -113,6 +113,7 @@ public class StorageBlock implements IBlock {
 		//write head
 		//underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.incMetaCount()));	
 		head.incMetaCount();
+		System.out.println("add:"+index+":"+head.getCurrentMetaCount());
 		//write meta	
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
@@ -188,11 +189,10 @@ public class StorageBlock implements IBlock {
 	@Override
 	public void close() throws IOException {
 		if (underlyingStorage != null) {
-			try {
-				underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
-				underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.getCurrentMetaCount()));
-			}catch(Throwable t) {				
-			}
+		
+			underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
+			underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.getCurrentMetaCount()));
+			System.out.println("close:"+index+":"+head.getCurrentMetaCount());
 			underlyingStorage.close();
 		}
 	}
@@ -322,11 +322,9 @@ public class StorageBlock implements IBlock {
 	public List<Meta> getAllValidMeta() throws IOException {
 		List<Meta> list = new ArrayList<Meta>();
 		int useSize = 0;
-		int count = head.getCurrentMetaCount()==0?Meta.MAX_META_COUNT:head.getCurrentMetaCount();
 		int i = 0;
-		for (; i < count; i++) {
+		for (; i < Meta.MAX_META_COUNT; i++) {
 			Meta meta = readMeta(i);
-			if(meta==null)
 			if(0==meta.getLastAccessTime()) {
 				break;
 			}

@@ -16,13 +16,13 @@ public class FunctionTest extends TestCase {
 
 		try {
 			CacheConfig config = new CacheConfig();
-			config.setStorageMode(StorageMode.MapFile);
-			config.setStartMode(StartMode.File);
+			config.setStorageMode(StorageMode.PureFile);
+			config.setStartMode(StartMode.RecoveryFromFile);
 			SimpleCache<String> cache = new SimpleCache<String>("D:\\data", config);
 			
 			String str = "123";
 			byte res[] = cache.get("2");
-			//System.out.println("get2:"+new String(res));
+			System.out.println("get2:"+new String(res));
 			cache.put("1", "hello1".getBytes());
 			cache.put("2", "hello2".getBytes());
 			cache.put("3", "hell03".getBytes());

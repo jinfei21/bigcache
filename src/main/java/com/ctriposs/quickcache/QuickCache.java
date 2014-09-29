@@ -104,7 +104,7 @@ public class QuickCache<K> implements ICache<K> {
 												config.getMaxOffHeapMemorySize(),
 												config.getDirtyRatioThreshold(),
 												config.getStartMode());
-		if(config.getStartMode() == StartMode.File) {
+		if(config.getStartMode() == StartMode.RecoveryFromFile) {
 			this.storageManager.loadPointerMap(pointerMap);
 		}
 		this.scheduler = new ScheduledThreadPoolExecutor(2);

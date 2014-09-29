@@ -41,7 +41,10 @@ public class PureFileStorage implements IStorage {
 	@Override
 	public void free() {
 		// nothing to do here
-		
+		try {
+			fileChannel.truncate(0);
+		} catch (IOException e) {
+		}
 	}
 
 	@Override

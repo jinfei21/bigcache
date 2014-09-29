@@ -110,11 +110,11 @@ public class StorageManager {
 	private void initializeBlocks(File directory, int initialNumberOfBlocks) throws IOException {
 		List<File> list = null;
 		switch (startMode) {
-            case None:
+            case ClearOldFile:
                 FileUtil.deleteDirectory(directory);
                 list = FileUtil.listFiles(directory);
                 break;
-            case File:
+            case RecoveryFromFile:
                 list = FileUtil.listFiles(directory);
                 for(File file:list) {
                     IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
@@ -282,12 +282,9 @@ public class StorageManager {
 	}
 
 	public void free() {
-		for(IBlock storageBlock : usedBlocks) {
+		for(IBlock storageBlock : freeBlocks) {
 			storageBlock.free();
-			this.freeBlocks.offer(storageBlock);
 		}
-		usedBlocks.clear();
-		this.activeBlock.free();
 	}
 
     /**
