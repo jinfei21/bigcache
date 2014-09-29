@@ -63,6 +63,13 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	Item readItem(Meta meta)throws IOException; 
 	
 	/**
+	 * Get meta of index in this storage block
+	 * 
+	 * @return meta
+	 */
+	Meta readMeta(int index)throws IOException; 
+	
+	/**
 	 * Calculates and returns total size of the dirty space.
 	 *
 	 * @return the total size of the dirty space.

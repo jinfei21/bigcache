@@ -1,9 +1,9 @@
 package com.ctriposs.quickcache;
 
-import java.io.ByteArrayOutputStream;
+import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
+
 import java.io.File;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -12,7 +12,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.lock.LockCenter;
 import com.ctriposs.quickcache.storage.Item;
@@ -21,9 +20,6 @@ import com.ctriposs.quickcache.storage.Pointer;
 import com.ctriposs.quickcache.storage.StorageManager;
 import com.ctriposs.quickcache.storage.WrapperKey;
 import com.ctriposs.quickcache.utils.FileUtil;
-
-import static com.ctriposs.quickcache.utils.ByteUtil.toByte;
-import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
 
 
 public class QuickCache<K> implements ICache<K> {
@@ -171,11 +167,15 @@ public class QuickCache<K> implements ICache<K> {
             	synchronized (oldPointer) {
             		Pointer checkPointer = pointerMap.get(wKey);
             		if(oldPointer==checkPointer) {
-						byte[] payload = storageManager.remove(oldPointer);
+            			byte[] payload = storageManager.retrieve(oldPointer);
+            			byte[] bytes = new byte[1];
+            			storageManager.store(wKey.getKey(),bytes,0);
 		                usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
 						return payload;
             		}else if(checkPointer !=null) {
-						byte[] payload = storageManager.remove(checkPointer);
+            			byte[] payload = storageManager.retrieve(oldPointer);
+            			byte[] bytes = new byte[1];
+            			storageManager.store(wKey.getKey(),bytes,0);
 		                usedSize.addAndGet((checkPointer.getItemSize()+Meta.META_SIZE)  * -1);
 						return payload;
             		}

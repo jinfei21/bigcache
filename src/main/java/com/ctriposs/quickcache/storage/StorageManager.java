@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -142,25 +143,35 @@ public class StorageManager {
 	
 	public void loadPointerMap(ConcurrentMap<WrapperKey, Pointer> map)throws IOException {
         synchronized (this) {
-        	
+        	ConcurrentMap<WrapperKey, Long> deleteMap = new ConcurrentHashMap<WrapperKey, Long>();
         	Iterator<IBlock> it = usedBlocks.iterator();
         	while (it.hasNext()) {
         		IBlock block = it.next();
-				for(Meta meta : block.getAllValidMeta()) {
+        		
+        		for(int index=0;index<Meta.MAX_META_COUNT;index++) {
+        			Meta meta = block.readMeta(index);
+        			if(meta.getLastAccessTime()==0) {
+        				break;
+        			}
 					Item item = block.readItem(meta);
 					WrapperKey wKey = new WrapperKey(item.getKey());
-					Pointer oldPointer = map.get(wKey);
-					if(oldPointer==null) {
-						Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
-						map.put(wKey, pointer);
+					
+					if(meta.getTtl()==0) {
+						deleteMap.put(wKey, meta.getLastAccessTime());
 					}else {
-						if(oldPointer.getLastAccessTime()<meta.getLastAccessTime()) {
-							Pointer pointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
-							map.put(wKey, pointer);
-							markDirty(oldPointer);
+						Long accesstime = deleteMap.get(wKey);
+						Pointer newPointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
+						if(accesstime==null) {
+							
+							map.put(wKey, newPointer);
+						}else {
+							if(accesstime<newPointer.getLastAccessTime()) {
+								map.put(wKey, newPointer);
+							}
 						}
+						
 					}
-				}	
+        		}        		
 			}
         }
 	}
@@ -277,7 +288,6 @@ public class StorageManager {
 		}
 		usedBlocks.clear();
 		this.activeBlock.free();
-		this.freeBlocks.offer(activeBlock);
 	}
 
     /**

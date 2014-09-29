@@ -111,8 +111,8 @@ public class StorageBlock implements IBlock {
 		Pointer pointer = new Pointer(this,allocation.metaOffset,key.length,value.length,ttl);
 		
 		//write head
-		underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.incMetaCount()));	
-		
+		//underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.incMetaCount()));	
+		head.incMetaCount();
 		//write meta	
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
@@ -188,7 +188,11 @@ public class StorageBlock implements IBlock {
 	@Override
 	public void close() throws IOException {
 		if (underlyingStorage != null) {
-			//underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
+			try {
+				underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
+				underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.getCurrentMetaCount()));
+			}catch(Throwable t) {				
+			}
 			underlyingStorage.close();
 		}
 	}
@@ -263,7 +267,8 @@ public class StorageBlock implements IBlock {
 	public void free() {
 		head.reset();
 		dirtyStorage.set(Head.HEAD_SIZE);
-		usedStorage.set(0);		
+		usedStorage.set(0);
+		underlyingStorage.free();
 	}
 
 	@Override
@@ -293,25 +298,23 @@ public class StorageBlock implements IBlock {
 		return head.getCurrentMetaCount();
 	}
 
-	private Meta readMeta(int index) throws IOException {
+	public Meta readMeta(int index) throws IOException {
 		Meta meta = null;
-		if(index < head.getCurrentMetaCount()) {
-			
-			int offset = Head.HEAD_SIZE + index*Meta.META_SIZE;
-			byte[] bytes = new byte[4];
-			underlyingStorage.get(offset + Meta.KEY_OFFSET, bytes);
-			int keyoffset = ByteUtil.ToInt(bytes);
-			underlyingStorage.get(offset + Meta.KEY_SIZE_OFFSET, bytes);
-			int keysize = ByteUtil.ToInt(bytes);
-			underlyingStorage.get(offset + Meta.VALUE_SIZE_OFFSET, bytes);
-			int valuesize = ByteUtil.ToInt(bytes);
-			bytes = new byte[8];
-			underlyingStorage.get(offset + Meta.LAST_ACCESS_OFFSET, bytes);
-			long lastaccesstime = ByteUtil.ToLong(bytes);
-			underlyingStorage.get(offset + Meta.TTL_OFFSET, bytes);
-			long ttl = ByteUtil.ToLong(bytes);
-			meta = new Meta(offset,keyoffset,keysize,valuesize,lastaccesstime,ttl);
-		}
+
+		int offset = Head.HEAD_SIZE + index * Meta.META_SIZE;
+		byte[] bytes = new byte[4];
+		underlyingStorage.get(offset + Meta.KEY_OFFSET, bytes);
+		int keyoffset = ByteUtil.ToInt(bytes);
+		underlyingStorage.get(offset + Meta.KEY_SIZE_OFFSET, bytes);
+		int keysize = ByteUtil.ToInt(bytes);
+		underlyingStorage.get(offset + Meta.VALUE_SIZE_OFFSET, bytes);
+		int valuesize = ByteUtil.ToInt(bytes);
+		bytes = new byte[8];
+		underlyingStorage.get(offset + Meta.LAST_ACCESS_OFFSET, bytes);
+		long lastaccesstime = ByteUtil.ToLong(bytes);
+		underlyingStorage.get(offset + Meta.TTL_OFFSET, bytes);
+		long ttl = ByteUtil.ToLong(bytes);
+		meta = new Meta(offset, keyoffset, keysize, valuesize, lastaccesstime,ttl);
 		return meta;
 	}
 	
@@ -319,8 +322,14 @@ public class StorageBlock implements IBlock {
 	public List<Meta> getAllValidMeta() throws IOException {
 		List<Meta> list = new ArrayList<Meta>();
 		int useSize = 0;
-		for (int i = 0; i < head.getCurrentMetaCount(); i++) {
+		int count = head.getCurrentMetaCount()==0?Meta.MAX_META_COUNT:head.getCurrentMetaCount();
+		int i = 0;
+		for (; i < count; i++) {
 			Meta meta = readMeta(i);
+			if(meta==null)
+			if(0==meta.getLastAccessTime()) {
+				break;
+			}
 			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()||meta.getTtl() == Meta.TTL_NEVER_EXPIRE) {
 				list.add(meta);
 			}
@@ -329,6 +338,7 @@ public class StorageBlock implements IBlock {
 		}
 		dirtyStorage.set(capacity - useSize);
 		usedStorage.set(useSize);
+		head.setCurrentMetaCount(i);
 		if(getDirtyRatio() < QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD) {
 			list.clear();
 		}

@@ -41,6 +41,7 @@ public class PureFileStorage implements IStorage {
 	@Override
 	public void free() {
 		// nothing to do here
+		
 	}
 
 	@Override

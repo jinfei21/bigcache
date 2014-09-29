@@ -63,6 +63,10 @@ public class Head {
 		return this.metaCount.get();
 	}
 	
+	public void setCurrentMetaCount(int newValue) {
+		this.metaCount.set(newValue);
+	}
+	
 	public void reset() {
 		activeFlag = FLAG_FREE;
 		currentMetaOffset.set(HEAD_SIZE);
