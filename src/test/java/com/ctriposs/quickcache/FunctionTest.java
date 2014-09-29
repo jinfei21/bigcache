@@ -23,13 +23,9 @@ public class FunctionTest extends TestCase {
 			String str = "123";
 			byte res[] = cache.get("2");
 
-
 			for(int i=0;i<10;i++) {
-				System.out.print("i="+i+"----");
 				cache.put("2", ("hello"+i).getBytes());
 			}
-			
-
 			
 			res = cache.get("2");
 			System.out.println("get2:"+new String(res));

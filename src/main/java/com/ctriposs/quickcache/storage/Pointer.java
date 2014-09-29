@@ -9,21 +9,25 @@ public class Pointer {
 	private final int metaOffset;
 	private final int keySize;
 	private final int valueSize;
-	private long lastAccessTime; 
+	private final long lastAccessTime; 
 	private final long ttl;			  // -1 means for never expire;0 means for delete
 	
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl) {
 		this.block = block;
 		this.metaOffset = metaOffset;
 		this.ttl = ttl;
-		this.lastAccessTime = System.currentTimeMillis();
+		this.lastAccessTime = System.nanoTime();
 		this.keySize = keySize;
 		this.valueSize = valueSize;
 	}
 
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl, long lastAccessTime) {
 		
-		this(block, metaOffset, keySize, valueSize, ttl);
+		this.block = block;
+		this.metaOffset = metaOffset;
+		this.ttl = ttl;
+		this.keySize = keySize;
+		this.valueSize = valueSize;
 		this.lastAccessTime = lastAccessTime;
 	}
 	
@@ -41,10 +45,6 @@ public class Pointer {
 
 	public long getTtl() {
 		return ttl;
-	}
-
-	public void setLastAccessTime(long lastAccessTime) {
-		this.lastAccessTime = lastAccessTime;
 	}
 	
     /**
