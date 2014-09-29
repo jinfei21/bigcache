@@ -187,7 +187,16 @@ public class SimpleCache<K> implements ICache<K> {
 					lockCenter.writeLock(wKey.hashCode());
 					oldPointer = pointerMap.get(wKey);
 					if(oldPointer != null) {
-						storageManager.markDirty(oldPointer);
+						if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+							if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+								storageManager.markDirty(oldPointer);
+								break;
+							}else {
+								continue;
+							}
+						}else {
+							break;
+						}						
 					}
 					pointerMap.put(wKey, newPointer);
 					usedSize.addAndGet(newPointer.getItemSize()+Meta.META_SIZE);					
