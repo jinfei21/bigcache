@@ -281,6 +281,9 @@ public class StorageManager {
 		return usedStorage + activeBlock.getUsed();
 	}
 
+    /**
+     * Just free the free blocks
+     */
 	public void free() {
 		for(IBlock storageBlock : freeBlocks) {
 			storageBlock.free();
@@ -345,7 +348,11 @@ public class StorageManager {
 		}
 		return set;
     }
-	
+
+    /**
+     * Get blocks amount
+     * @return the amount
+     */
 	public int getTotalBlockCount() {
 		return getAllBlocks().size();
 	}

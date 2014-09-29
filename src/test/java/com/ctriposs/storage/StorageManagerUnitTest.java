@@ -98,10 +98,10 @@ public class StorageManagerUnitTest {
 
         // free
         storageManager.free();
-        assertTrue(1024 * 1024 * 128 * 2 == storageManager.getCapacity());
-        assertTrue(5L == storageManager.getDirty());
-        assertTrue(2 == storageManager.getTotalBlockCount());
-        assertTrue(2 == storageManager.getFreeBlockCount());
+        assertTrue(1024 * 1024 * 128 == storageManager.getCapacity());
+        assertTrue((Head.HEAD_SIZE + keyBytes.length + resultBytes.length + Meta.META_SIZE) == storageManager.getDirty());
+        assertTrue(1 == storageManager.getTotalBlockCount());
+        assertTrue(0 == storageManager.getFreeBlockCount());
         assertTrue(0 == storageManager.getUsedBlockCount());
     }
 
