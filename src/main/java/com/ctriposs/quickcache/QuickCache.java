@@ -394,7 +394,7 @@ public class QuickCache<K> implements ICache<K> {
 					try {
 						lock = new ReentrantReadWriteLock();
 						lock.writeLock().lock();
-						cache.lockCenter.registerMigrateLock(wKey.hashCode(), lock);
+						cache.lockCenter.registerExpireLock(wKey.hashCode(), lock);
 						synchronized (oldPointer) {
 							oldPointer = cache.pointerMap.get(wKey);
 							if(oldPointer != null) {
