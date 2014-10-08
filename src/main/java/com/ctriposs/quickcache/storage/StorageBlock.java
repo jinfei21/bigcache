@@ -95,8 +95,8 @@ public class StorageBlock implements IBlock {
 		underlyingStorage.get(Head.FLAG_OFFSET, flag);
 		byte count[] = new byte[4];
 		underlyingStorage.get(Head.META_COUNT_OFFSET, count);
-		Head head = new Head(flag[0],ByteUtil.ToInt(count));
-		return head;
+
+        return new Head(flag[0],ByteUtil.ToInt(count));
 	}
 	
 	/**
@@ -108,22 +108,22 @@ public class StorageBlock implements IBlock {
 	 * @throws IOException 
 	 */
 	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
-		Pointer pointer = new Pointer(this,allocation.metaOffset,key.length,value.length,ttl);
+		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
 		
-		//write head
-		//underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.incMetaCount()));	
+		// write head
 		head.incMetaCount();
-		//write meta	
+		// write meta
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
 		underlyingStorage.put(allocation.metaOffset + Meta.VALUE_SIZE_OFFSET, ByteUtil.toBytes(value.length));
 		underlyingStorage.put(allocation.metaOffset + Meta.LAST_ACCESS_OFFSET, ByteUtil.toBytes(pointer.getLastAccessTime()));
 		underlyingStorage.put(allocation.metaOffset + Meta.TTL_OFFSET, ByteUtil.toBytes(ttl));
-		//write item
+		// write item
 		underlyingStorage.put(allocation.itemOffset, key);
 		underlyingStorage.put(allocation.itemOffset + key.length, value);
-		//add stat
+		// used storage update
 		usedStorage.addAndGet(payloadLength + Meta.META_SIZE);
+
 		return pointer;
 	}
 
@@ -220,24 +220,6 @@ public class StorageBlock implements IBlock {
 			this.itemOffset = itemOffset;
 			this.metaOffset = metaOffset;
 		}
-		
-		/**
-		 * Gets the item offset.
-		 *
-		 * @return the offset
-		 */
-		public int getItemOffset() {
-			return itemOffset;
-		}
-		
-		/**
-		 * Gets the meta offset.
-		 *
-		 * @return the offset
-		 */
-		public int getMetaOffset() {
-			return metaOffset;
-		}
 	}
 	
 	@Override
@@ -301,22 +283,23 @@ public class StorageBlock implements IBlock {
 	}
 
 	public Meta readMeta(int index) throws IOException {
-		Meta meta = null;
+		Meta meta;
 
 		int offset = Head.HEAD_SIZE + index * Meta.META_SIZE;
 		byte[] bytes = new byte[4];
 		underlyingStorage.get(offset + Meta.KEY_OFFSET, bytes);
-		int keyoffset = ByteUtil.ToInt(bytes);
+		int keyOffset = ByteUtil.ToInt(bytes);
 		underlyingStorage.get(offset + Meta.KEY_SIZE_OFFSET, bytes);
-		int keysize = ByteUtil.ToInt(bytes);
+		int keySize = ByteUtil.ToInt(bytes);
 		underlyingStorage.get(offset + Meta.VALUE_SIZE_OFFSET, bytes);
-		int valuesize = ByteUtil.ToInt(bytes);
+		int valueSize = ByteUtil.ToInt(bytes);
 		bytes = new byte[8];
 		underlyingStorage.get(offset + Meta.LAST_ACCESS_OFFSET, bytes);
-		long lastaccesstime = ByteUtil.ToLong(bytes);
+		long lastAccessTime = ByteUtil.ToLong(bytes);
 		underlyingStorage.get(offset + Meta.TTL_OFFSET, bytes);
 		long ttl = ByteUtil.ToLong(bytes);
-		meta = new Meta(offset, keyoffset, keysize, valuesize, lastaccesstime,ttl);
+
+		meta = new Meta(offset, keyOffset, keySize, valueSize, lastAccessTime,ttl);
 		return meta;
 	}
 	
