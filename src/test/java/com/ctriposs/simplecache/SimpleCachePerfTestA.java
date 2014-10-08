@@ -7,6 +7,7 @@ import com.ctriposs.quickcache.util.TestUtil;
 import com.ctriposs.quickcache.utils.FileUtil;
 import org.junit.After;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.File;
@@ -23,6 +24,7 @@ import java.util.concurrent.Future;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+@RunWith(Parameterized.class)
 public class SimpleCachePerfTestA {
 
     private static final int THREAD_COUNT = 128;
