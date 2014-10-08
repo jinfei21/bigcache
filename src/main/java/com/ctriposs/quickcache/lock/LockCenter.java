@@ -53,7 +53,7 @@ public class LockCenter {
 	}
 	
 	public boolean isNeedLock() {
-		return this.expireActive.get()||this.migrateActive.get();
+		return this.expireActive.get() || this.migrateActive.get();
 	}
 	
 	public boolean isExpireActive() {

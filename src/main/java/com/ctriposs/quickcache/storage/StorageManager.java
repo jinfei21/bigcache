@@ -355,7 +355,7 @@ public class StorageManager {
     
     public Set<IBlock> getDirtyBlocks(){
 		Set<IBlock> set = new HashSet<IBlock>();
-		for(IBlock block:usedBlocks) {
+		for(IBlock block : usedBlocks) {
 			if(dirtyRatioThreshold < block.getDirtyRatio()) {
 				set.add(block);
 			}

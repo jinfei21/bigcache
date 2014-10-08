@@ -25,7 +25,7 @@ import com.ctriposs.quickcache.utils.FileUtil;
 public class QuickCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
-	public static final long DEFAULT_MIGRATE_INTERVAL = 1 * 60 * 1000;
+	public static final long DEFAULT_MIGRATE_INTERVAL = 10 * 60 * 1000;
 	
 	/** The Constant DEFAULT_CONCURRENCY_LEVEL. */
 	public static final int DEFAULT_CONCURRENCY_LEVEL = 8; // 256 concurrent level
@@ -72,12 +72,9 @@ public class QuickCache<K> implements ICache<K> {
     /**	The lock manager for key during expire or migrate */
     private LockCenter lockCenter;
     
-    /** The thread pool for expire and migrate*/
+    /** The thread pool for expire and migrate */
     private ScheduledExecutorService scheduler;
-    
-	/** The directory to store cached data */
-	private String cacheDir;
-    
+
     /** The total storage size we have used, including the expired ones which are still in the pointermap */
 	private AtomicLong usedSize = new AtomicLong();
 
@@ -88,22 +85,23 @@ public class QuickCache<K> implements ICache<K> {
 	private final StorageManager storageManager;
     
     public QuickCache(String dir, CacheConfig config) throws IOException {
-    	this.cacheDir = dir;
-		if (!this.cacheDir.endsWith(File.separator)) {
-			this.cacheDir += File.separator;
+    	/* The directory to store cached data */
+        String cacheDir = dir;
+		if (!cacheDir.endsWith(File.separator)) {
+			cacheDir += File.separator;
 		}
 		// validate directory
-		if (!FileUtil.isFilenameValid(this.cacheDir)) {
-			throw new IllegalArgumentException("Invalid cache data directory : " + this.cacheDir);
+		if (!FileUtil.isFilenameValid(cacheDir)) {
+			throw new IllegalArgumentException("Invalid cache data directory : " + cacheDir);
 		}
 		
-		this.storageManager = new StorageManager(this.cacheDir, 
-												config.getCapacityPerBlock(),
-												config.getInitialNumberOfBlocks(), 
-												config.getStorageMode(), 
-												config.getMaxOffHeapMemorySize(),
-												config.getDirtyRatioThreshold(),
-												config.getStartMode());
+		this.storageManager = new StorageManager(cacheDir,
+                config.getCapacityPerBlock(),
+                config.getInitialNumberOfBlocks(),
+                config.getStorageMode(),
+                config.getMaxOffHeapMemorySize(),
+                config.getDirtyRatioThreshold(),
+                config.getStartMode());
 		if(config.getStartMode() == StartMode.RecoveryFromFile) {
 			this.storageManager.loadPointerMap(pointerMap);
 		}
@@ -335,7 +333,7 @@ public class QuickCache<K> implements ICache<K> {
 			public void process(QuickCache<K> cache) {
 
 				migrateCounter.incrementAndGet();
-				for(IBlock block:cache.storageManager.getDirtyBlocks()) {
+				for(IBlock block : cache.storageManager.getDirtyBlocks()) {
 					try {
 						cache.lockCenter.activeMigrate();
 						for(Meta meta : block.getAllValidMeta()) {
@@ -388,7 +386,7 @@ public class QuickCache<K> implements ICache<K> {
 		@Override
 		public void process(QuickCache<K> cache)  {
 			expireCounter.incrementAndGet();
-			for(WrapperKey wKey:cache.pointerMap.keySet()) {
+			for(WrapperKey wKey : cache.pointerMap.keySet()) {
 				cache.lockCenter.activeExpire();
 				Pointer oldPointer = cache.pointerMap.get(wKey);
 				if(oldPointer != null&&oldPointer.isExpired()) {

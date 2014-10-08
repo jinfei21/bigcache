@@ -5,7 +5,7 @@ import java.util.Arrays;
 
 import com.ctriposs.quickcache.utils.HashUtil;
 
-public class WrapperKey implements Serializable{
+public class WrapperKey implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	private byte[] key;
