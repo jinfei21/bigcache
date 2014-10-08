@@ -22,6 +22,8 @@ import com.ctriposs.quickcache.storage.StorageManager;
 import com.ctriposs.quickcache.storage.WrapperKey;
 import com.ctriposs.quickcache.utils.FileUtil;
 
+import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
+
 public class SimpleCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
@@ -65,11 +67,8 @@ public class SimpleCache<K> implements ICache<K> {
 	
     /** The thread pool for expire and migrate*/
     private ScheduledExecutorService scheduler;
-    
-	/** The directory to store cached data */
-	private String cacheDir;
-    
-    /** The total storage size we have used, including the expired ones which are still in the pointermap */
+
+    /** The total storage size we have used, including the expired ones which are still in the pointer map */
 	private AtomicLong usedSize = new AtomicLong();
 
 	/** The internal map. */
@@ -80,22 +79,22 @@ public class SimpleCache<K> implements ICache<K> {
 
 	
     public SimpleCache(String dir, CacheConfig config) throws IOException {
-    	this.cacheDir = dir;
-		if (!this.cacheDir.endsWith(File.separator)) {
-			this.cacheDir += File.separator;
+        String cacheDir = dir;
+		if (!cacheDir.endsWith(File.separator)) {
+			cacheDir += File.separator;
 		}
 		// validate directory
-		if (!FileUtil.isFilenameValid(this.cacheDir)) {
-			throw new IllegalArgumentException("Invalid cache data directory : " + this.cacheDir);
+		if (!FileUtil.isFilenameValid(cacheDir)) {
+			throw new IllegalArgumentException("Invalid cache data directory : " + cacheDir);
 		}
 		
-		this.storageManager = new StorageManager(this.cacheDir, 
-												config.getCapacityPerBlock(),
-												config.getInitialNumberOfBlocks(), 
-												config.getStorageMode(), 
-												config.getMaxOffHeapMemorySize(),
-												config.getDirtyRatioThreshold(),
-												config.getStartMode());
+		this.storageManager = new StorageManager(cacheDir,
+                config.getCapacityPerBlock(),
+                config.getInitialNumberOfBlocks(),
+                config.getStorageMode(),
+                config.getMaxOffHeapMemorySize(),
+                config.getDirtyRatioThreshold(),
+                config.getStartMode());
 		if(config.getStartMode() == StartMode.RecoveryFromFile) {
 			this.storageManager.loadPointerMap(pointerMap);
 		}
@@ -114,7 +113,7 @@ public class SimpleCache<K> implements ICache<K> {
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();
 		checkKey(key);
-		WrapperKey wKey = new WrapperKey(ToBytes(key));
+		WrapperKey wKey = new WrapperKey(toBytes(key));
 
 		Pointer pointer = pointerMap.get(wKey);
 
@@ -124,8 +123,6 @@ public class SimpleCache<K> implements ICache<K> {
 		}
 
 		if (!pointer.isExpired()) {
-			// access time updated, the following change will not be lost
-			//pointer.setLastAccessTime(System.currentTimeMillis());
 			hitCounter.incrementAndGet();
 			return storageManager.retrieve(pointer);
 		} else {
@@ -139,7 +136,7 @@ public class SimpleCache<K> implements ICache<K> {
 	public byte[] delete(K key) throws IOException {
 		deleteCounter.incrementAndGet();
 		checkKey(key);
-        WrapperKey wKey = new WrapperKey(ToBytes(key));
+        WrapperKey wKey = new WrapperKey(toBytes(key));
 		Pointer oldPointer = pointerMap.remove(wKey);
 		if(oldPointer!=null) {
 			//byte[] payload = storageManager.remove(oldPointer);
@@ -165,14 +162,14 @@ public class SimpleCache<K> implements ICache<K> {
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
-        WrapperKey wKey = new WrapperKey(ToBytes(key));
+        WrapperKey wKey = new WrapperKey(toBytes(key));
    
        
-		Pointer newPointer = storageManager.store(wKey.getKey(),value,ttl);
-		while(true){
+		Pointer newPointer = storageManager.store(wKey.getKey(), value, ttl);
+		while(true) {
 			Pointer oldPointer = pointerMap.get(wKey);
-			if(oldPointer != null){
-				if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+			if(oldPointer != null) {
+				if(oldPointer.getLastAccessTime() < newPointer.getLastAccessTime()) {
 					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 						storageManager.markDirty(oldPointer); 
 						break;
@@ -197,24 +194,6 @@ public class SimpleCache<K> implements ICache<K> {
 
 	}
 
-	private byte[] ToBytes(K key) throws IOException {
-		if(key instanceof byte[]) {
-			return (byte[])key;
-		} else if(key instanceof String){
-			return ((String) key).getBytes();
-		}else {
-		
-			try {
-				ByteArrayOutputStream byteOut = new ByteArrayOutputStream(); 
-				ObjectOutputStream objectOut = new ObjectOutputStream(byteOut);
-				objectOut.writeObject(key);
-				return byteOut.toByteArray();
-			} catch (IOException e) {
-				throw e;
-			}
-		}
-	}
-	
 	@Override
 	public boolean contains(K key) {
 		return pointerMap.containsKey(key);

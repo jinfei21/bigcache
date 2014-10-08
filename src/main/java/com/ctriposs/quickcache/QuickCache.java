@@ -85,7 +85,6 @@ public class QuickCache<K> implements ICache<K> {
 	private final StorageManager storageManager;
     
     public QuickCache(String dir, CacheConfig config) throws IOException {
-    	/* The directory to store cached data */
         String cacheDir = dir;
 		if (!cacheDir.endsWith(File.separator)) {
 			cacheDir += File.separator;

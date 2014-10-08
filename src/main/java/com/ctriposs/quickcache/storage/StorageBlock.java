@@ -128,7 +128,7 @@ public class StorageBlock implements IBlock {
 	}
 
 	@Override
-	public Pointer store(byte[] key,byte[] value, long ttl) throws IOException {
+	public Pointer store(byte[] key, byte[] value, long ttl) throws IOException {
 		int payloadLength = key.length + value.length;
 		Allocation allocation = allocate(payloadLength);
 		if (allocation == null)
@@ -158,7 +158,7 @@ public class StorageBlock implements IBlock {
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
 		byte bytes[] = new byte[4];
-		underlyingStorage.get(pointer.getMetaOffset()+ Meta.KEY_OFFSET, bytes);
+		underlyingStorage.get(pointer.getMetaOffset() + Meta.KEY_OFFSET, bytes);
 		int itemOffset = ByteUtil.ToInt(bytes);
 		bytes = new byte[pointer.getValueSize()];
 		underlyingStorage.get(itemOffset + pointer.getKeySize(), bytes);
