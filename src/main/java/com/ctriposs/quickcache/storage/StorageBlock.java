@@ -134,8 +134,7 @@ public class StorageBlock implements IBlock {
 		if (allocation == null)
             return null; // not enough storage available
 
-		Pointer pointer = store(allocation, key,value, ttl, payloadLength);
-		return pointer;
+        return store(allocation, key, value, ttl, payloadLength);
 	}
 
 	/**
@@ -151,9 +150,8 @@ public class StorageBlock implements IBlock {
 		if(capacity < itemOffset || metaCapacity < metaOffset){
 			return null;
 		}
-		
-		Allocation allocation = new Allocation(itemOffset - payloadLength, metaOffset - Meta.META_SIZE);
-		return allocation;
+
+        return new Allocation(itemOffset - payloadLength, metaOffset - Meta.META_SIZE);
 	}
 
 
@@ -167,6 +165,12 @@ public class StorageBlock implements IBlock {
 		return bytes;
 	}
 
+    /**
+     * Remove the pointer corresponding item (just mark dirty)
+     * @param pointer the pointer
+     * @return the byte array of value
+     * @throws IOException
+     */
 	public byte[] remove(Pointer pointer) throws IOException {
 
 		underlyingStorage.put(pointer.getMetaOffset() + Meta.TTL_OFFSET, ByteUtil.toBytes(Meta.TTL_DELETE));	
