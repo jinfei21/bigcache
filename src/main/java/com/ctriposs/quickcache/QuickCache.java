@@ -164,19 +164,20 @@ public class QuickCache<K> implements ICache<K> {
             if (oldPointer != null) {
             	synchronized (oldPointer) {
             		Pointer checkPointer = pointerMap.get(wKey);
-            		if(oldPointer==checkPointer) {
-            			byte[] payload = storageManager.retrieve(oldPointer);
-            			byte[] bytes = new byte[1];
-            			storageManager.store(wKey.getKey(),bytes,0);
-		                usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
-						return payload;
-            		}else if(checkPointer !=null) {
-            			byte[] payload = storageManager.retrieve(oldPointer);
-            			byte[] bytes = new byte[1];
-            			storageManager.store(wKey.getKey(),bytes,0);
-		                usedSize.addAndGet((checkPointer.getItemSize()+Meta.META_SIZE)  * -1);
-						return payload;
+	                if(checkPointer != oldPointer) {
+	                	storageManager.markDirty(oldPointer);
+	                	
+	                }
+            		if(checkPointer == null) {
+            			checkPointer = oldPointer;
             		}
+        			byte[] payload = storageManager.retrieve(checkPointer);
+        			byte[] bytes = new byte[1];
+        			storageManager.store(wKey.getKey(),bytes,0);
+	                usedSize.addAndGet((checkPointer.getItemSize()+Meta.META_SIZE)  * -1);
+	                storageManager.markDirty(checkPointer);
+					return payload;
+            		
 				}
             }
 			
@@ -271,8 +272,11 @@ public class QuickCache<K> implements ICache<K> {
 	}
 	
 	@Override
-	public boolean contains(K key) {
-		return pointerMap.containsKey(key);
+	public boolean contains(K key) throws IOException {
+		
+		WrapperKey wKey = new WrapperKey(toBytes(key));
+		
+		return pointerMap.containsKey(wKey);
 	}
 
 	@Override
