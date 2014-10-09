@@ -193,7 +193,9 @@ public class SimpleCache<K> implements ICache<K> {
 
 	@Override
 	public boolean contains(K key) throws IOException {
-		return pointerMap.containsKey(new WrapperKey(toBytes(key)));
+		
+		WrapperKey wKey = new WrapperKey(toBytes(key));
+		return pointerMap.containsKey(wKey);
 	}
 	
 	@Override

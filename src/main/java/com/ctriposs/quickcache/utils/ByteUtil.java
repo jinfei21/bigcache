@@ -34,7 +34,7 @@ public class ByteUtil {
 
 	}
 
-	public static byte[] ToBytes(short n) {
+	public static byte[] toBytes(short n) {
 		byte[] bytes = new byte[2];
 		bytes[1] = (byte) (n & 0xff);
 		bytes[0] = (byte) ((n >> 8) & 0xff);
