@@ -117,7 +117,7 @@ public class StorageManager {
                 break;
             case RecoveryFromFile:
                 list = FileUtil.listFiles(directory);
-                for(File file:list) {
+                for(File file : list) {
                     IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
                     block.getAllValidMeta();
                     if(block.getMetaCount() == 0) {
