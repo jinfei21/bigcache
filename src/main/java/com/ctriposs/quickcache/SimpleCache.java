@@ -11,10 +11,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.ctriposs.quickcache.CacheConfig.StartMode;
-import com.ctriposs.quickcache.lock.LockCenter;
 import com.ctriposs.quickcache.storage.Item;
 import com.ctriposs.quickcache.storage.Meta;
 import com.ctriposs.quickcache.storage.Pointer;
@@ -25,7 +23,7 @@ import com.ctriposs.quickcache.utils.FileUtil;
 public class SimpleCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
-	public static final long DEFAULT_MIGRATE_INTERVAL = 10 * 60 * 1000;
+	public static final long DEFAULT_MIGRATE_INTERVAL = 1 * 60 * 1000;
 	
 	/** The default purge interval which is 10 minutes. */
 	public static final long DEFAULT_EXPIRE_INTERVAL = 10 * 60 * 1000;
@@ -172,7 +170,7 @@ public class SimpleCache<K> implements ICache<K> {
 		while(true){
 			Pointer oldPointer = pointerMap.get(wKey);
 			if(oldPointer != null){
-				if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
+				if(oldPointer.getCreateNanoTime()<newPointer.getCreateNanoTime()) {
 					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 						storageManager.markDirty(oldPointer); 
 						break;
@@ -184,7 +182,7 @@ public class SimpleCache<K> implements ICache<K> {
 			} else {
 				Pointer checkPointer = pointerMap.putIfAbsent(wKey, newPointer);
 				if (checkPointer != null) {
-					if (checkPointer.getLastAccessTime() > newPointer.getLastAccessTime()) {
+					if (checkPointer.getCreateNanoTime() > newPointer.getCreateNanoTime()) {
 						storageManager.markDirty(newPointer);
 						break;
 					}
@@ -216,8 +214,11 @@ public class SimpleCache<K> implements ICache<K> {
 	}
 	
 	@Override
-	public boolean contains(K key) {
-		return pointerMap.containsKey(key);
+	public boolean contains(K key) throws IOException {
+		
+		WrapperKey wKey = new WrapperKey(ToBytes(key));
+		
+		return pointerMap.containsKey(wKey);
 	}
 	
 	@Override

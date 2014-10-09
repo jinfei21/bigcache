@@ -14,6 +14,7 @@ public class FunctionTest extends TestCase {
 	public static void main(String args[]) {
 	
 
+
 		try {
 			CacheConfig config = new CacheConfig();
 			config.setStorageMode(StorageMode.PureFile);
@@ -37,7 +38,6 @@ public class FunctionTest extends TestCase {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
 	}
 	
 }

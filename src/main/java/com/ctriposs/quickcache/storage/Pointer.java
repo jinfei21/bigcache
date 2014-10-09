@@ -11,14 +11,16 @@ public class Pointer {
 	private final int valueSize;
 	private final long lastAccessTime; 
 	private final long ttl;			  // -1 means for never expire;0 means for delete
+	private final long createNanoTime;
 	
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl) {
 		this.block = block;
 		this.metaOffset = metaOffset;
 		this.ttl = ttl;
-		this.lastAccessTime = System.nanoTime();
+		this.lastAccessTime = System.currentTimeMillis();
 		this.keySize = keySize;
 		this.valueSize = valueSize;
+		this.createNanoTime = System.nanoTime();
 	}
 
 	public Pointer(IBlock block,int metaOffset,int keySize,int valueSize,long ttl, long lastAccessTime) {
@@ -29,6 +31,7 @@ public class Pointer {
 		this.keySize = keySize;
 		this.valueSize = valueSize;
 		this.lastAccessTime = lastAccessTime;
+		this.createNanoTime = System.nanoTime();
 	}
 	
 	public IBlock getBlock() {
@@ -80,5 +83,8 @@ public class Pointer {
 			}
 		}
 		return false;
+	}
+	public long getCreateNanoTime() {
+		return createNanoTime;
 	}
 }

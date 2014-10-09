@@ -53,7 +53,7 @@ public interface ICache<K> extends Closeable {
 	 * @param key the key
 	 * @return true, if successful
 	 */
-	boolean contains(K key);
+	boolean contains(K key) throws IOException;
 
 	/**
 	 * Clear the cache.
