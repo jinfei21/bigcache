@@ -272,7 +272,7 @@ public class QuickCache<K> implements ICache<K> {
 	
 	@Override
 	public boolean contains(K key) {
-		return pointerMap.containsKey(key);
+		return pointerMap.containsKey(new WrapperKey(toBytes(key)));
 	}
 
 	@Override
