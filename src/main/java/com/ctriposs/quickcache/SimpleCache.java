@@ -1,6 +1,6 @@
 package com.ctriposs.quickcache;
 
-import static com.ctriposs.quickcache.utils.ByteUtil.toBytes;
+import static com.ctriposs.quickcache.utils.ByteUtil.ToBytes;
 
 import java.io.File;
 import java.io.IOException;
@@ -109,7 +109,7 @@ public class SimpleCache<K> implements ICache<K> {
 	public byte[] get(K key) throws IOException {
 		getCounter.incrementAndGet();
 		checkKey(key);
-		WrapperKey wKey = new WrapperKey(toBytes(key));
+		WrapperKey wKey = new WrapperKey(ToBytes(key));
 
 		Pointer pointer = pointerMap.get(wKey);
 
@@ -132,7 +132,7 @@ public class SimpleCache<K> implements ICache<K> {
 	public byte[] delete(K key) throws IOException {
 		deleteCounter.incrementAndGet();
 		checkKey(key);
-        WrapperKey wKey = new WrapperKey(toBytes(key));
+        WrapperKey wKey = new WrapperKey(ToBytes(key));
 		Pointer oldPointer = pointerMap.remove(wKey);
 		if(oldPointer!=null) {
 			//byte[] payload = storageManager.remove(oldPointer);
@@ -158,7 +158,7 @@ public class SimpleCache<K> implements ICache<K> {
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
-        WrapperKey wKey = new WrapperKey(toBytes(key));
+        WrapperKey wKey = new WrapperKey(ToBytes(key));
    
        
 		Pointer newPointer = storageManager.store(wKey.getKey(), value, ttl);
@@ -194,7 +194,7 @@ public class SimpleCache<K> implements ICache<K> {
 	@Override
 	public boolean contains(K key) throws IOException {
 		
-		WrapperKey wKey = new WrapperKey(toBytes(key));
+		WrapperKey wKey = new WrapperKey(ToBytes(key));
 		return pointerMap.containsKey(wKey);
 	}
 	

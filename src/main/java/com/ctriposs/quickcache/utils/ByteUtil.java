@@ -41,7 +41,7 @@ public class ByteUtil {
 		return bytes;
 	}
 
-    public static byte[] toBytes(Object o) {
+    public static byte[] ToBytes(Object o) {
         if (o instanceof String) {
             return ((String) o).getBytes();
         } else if (o instanceof byte[]) {
