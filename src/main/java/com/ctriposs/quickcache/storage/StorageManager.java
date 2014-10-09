@@ -119,11 +119,7 @@ public class StorageManager {
                 list = FileUtil.listFiles(directory);
                 for(File file : list) {
                     IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
-                    if(block.getMetaCount() == 0) {
-                        freeBlocks.offer(block);
-                    }else {
-                        usedBlocks.add(block);
-                    }
+                    usedBlocks.add(block);                   
                 }
                 break;
 		}
@@ -150,6 +146,11 @@ public class StorageManager {
         		for(int index=0;index<Meta.MAX_META_COUNT;index++) {
         			Meta meta = block.readMeta(index);
         			if(meta.getLastAccessTime()==0) {
+        				if(index==0) {
+        					it.remove();
+        					freeBlocks.offer(block);
+        				}
+        				
         				break;
         			}
 										

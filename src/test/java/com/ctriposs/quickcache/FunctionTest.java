@@ -1,9 +1,7 @@
 package com.ctriposs.quickcache;
 
 import java.io.IOException;
-
 import junit.framework.TestCase;
-
 import com.ctriposs.quickcache.CacheConfig.StartMode;
 import com.ctriposs.quickcache.CacheConfig.StorageMode;
 
@@ -13,7 +11,6 @@ public class FunctionTest extends TestCase {
 
 	public static void main(String args[]) {
 	
-
 
 		try {
 			CacheConfig config = new CacheConfig();
@@ -38,6 +35,8 @@ public class FunctionTest extends TestCase {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+
 	}
 	
 }
