@@ -15,7 +15,10 @@ public class PureFileStorage implements IStorage {
 	
 	public PureFileStorage(String dir, int index, int capacity) throws IOException {
 		File dirFile = new File(dir);
-		if (!dirFile.exists()) { dirFile.mkdirs(); }
+		if (!dirFile.exists()) {
+            dirFile.mkdirs();
+        }
+
 		String fullFileName = dir + index + "-" + System.currentTimeMillis() + DATA_FILE_SUFFIX;
 		raf = new RandomAccessFile(fullFileName, "rw");
 		raf.setLength(capacity);

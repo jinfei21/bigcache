@@ -88,20 +88,20 @@ public class StorageManager {
 	/** 
 	 * dirty ratio which controls block recycle 
 	 */
-    public static double dirtyRatioThreshold;
+    public final double dirtyRatioThreshold;
 	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
 			long maxOffHeapMemorySize, double dirtyRatioThreshold, StartMode startMode) throws IOException {
 		this.dirtyRatioThreshold = dirtyRatioThreshold;
-		
-		if (storageMode != StorageMode.PureFile||storageMode != StorageMode.MapFile) {
-			this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
-		} else {
-			this.allowedOffHeapModeBlockCount = 0;
-		}
 
-		this.storageMode = storageMode;	
+        if (storageMode == StorageMode.OffHeapFile) {
+            this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
+        } else {
+            this.allowedOffHeapModeBlockCount = 0;
+        }
+
+		this.storageMode = storageMode;
 		this.startMode = startMode;
 		this.capacityPerBlock = capacityPerBlock;
 		this.dir = dir;
@@ -117,7 +117,7 @@ public class StorageManager {
                 break;
             case RecoveryFromFile:
                 list = FileUtil.listFiles(directory);
-                for(File file:list) {
+                for(File file : list) {
                     IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
                     block.getAllValidMeta();
                     if(block.getMetaCount() == 0) {
@@ -334,8 +334,7 @@ public class StorageManager {
      * @return the dirty ratio
      */
 	public double getDirtyRatio() {
-		double d = (getDirty() * 1.0) / getCapacity();
-        return d;
+        return (getDirty() * 1.0) / getCapacity();
 	}
 	
 	public int getFreeBlockCount() {
@@ -356,7 +355,7 @@ public class StorageManager {
     
     public Set<IBlock> getDirtyBlocks(){
 		Set<IBlock> set = new HashSet<IBlock>();
-		for(IBlock block:usedBlocks) {
+		for(IBlock block : usedBlocks) {
 			if(dirtyRatioThreshold < block.getDirtyRatio()) {
 				set.add(block);
 			}

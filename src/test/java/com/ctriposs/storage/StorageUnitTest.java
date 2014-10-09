@@ -9,6 +9,7 @@ import com.ctriposs.quickcache.utils.FileUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.File;
@@ -18,6 +19,7 @@ import java.util.Collection;
 
 import static org.junit.Assert.assertEquals;
 
+@RunWith(Parameterized.class)
 public class StorageUnitTest {
 
     private static final String TEST_DIR = TestUtil.TEST_BASE_DIR + "unit/storageunit_test";

@@ -9,14 +9,14 @@ public class LockCenter {
 
 	private AtomicBoolean expireActive;
 	private AtomicBoolean migrateActive;
-	private Map<Integer,ReentrantReadWriteLock> exipreLock;
-	private Map<Integer,ReentrantReadWriteLock> migrateLock;
+	private Map<Integer, ReentrantReadWriteLock> expireLock;
+	private Map<Integer, ReentrantReadWriteLock> migrateLock;
 	private ReentrantReadWriteLock[] locks;
 	
 	public LockCenter(int storagePower) {
 		this.expireActive = new AtomicBoolean(false);
 		this.migrateActive = new AtomicBoolean(false);
-		this.exipreLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
+		this.expireLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
 		this.migrateLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
 		if (!(storagePower >= 1 && storagePower <= 11)) {
 			throw new IllegalArgumentException("storage power must be in {1..11}");
@@ -32,7 +32,7 @@ public class LockCenter {
 	public LockCenter() {
 		this.expireActive = new AtomicBoolean(false);
 		this.migrateActive = new AtomicBoolean(false);
-		this.exipreLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
+		this.expireLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
 		this.migrateLock = new ConcurrentHashMap<Integer, ReentrantReadWriteLock>();
 	}
 	
@@ -53,7 +53,7 @@ public class LockCenter {
 	}
 	
 	public boolean isNeedLock() {
-		return this.expireActive.get()||this.migrateActive.get();
+		return this.expireActive.get() || this.migrateActive.get();
 	}
 	
 	public boolean isExpireActive() {
@@ -65,18 +65,18 @@ public class LockCenter {
 	}
 	
 	public ReentrantReadWriteLock getExpireLock(int id) {
-		return this.exipreLock.get(id);
+		return this.expireLock.get(id);
 	}
 	
-	public void registerExpireLock(int id,ReentrantReadWriteLock lock) {
-		this.exipreLock.put(id, lock);
+	public void registerExpireLock(int id, ReentrantReadWriteLock lock) {
+		this.expireLock.put(id, lock);
 	}
 
 	public ReentrantReadWriteLock getMigrateLock(int id) {
 		return this.migrateLock.get(id);
 	}
 	
-	public void registerMigrateLock(int id,ReentrantReadWriteLock lock) {
+	public void registerMigrateLock(int id, ReentrantReadWriteLock lock) {
 		this.migrateLock.put(id, lock);
 	}
 	
@@ -85,7 +85,7 @@ public class LockCenter {
 	}
 	
 	public void unregisterExpireLock(int id) {
-		this.exipreLock.remove(id);
+		this.expireLock.remove(id);
 	}
 	
 	/**

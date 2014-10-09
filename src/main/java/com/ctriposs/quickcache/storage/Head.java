@@ -8,8 +8,8 @@ public class Head {
 	public static final byte FLAG_ACTIVE = 1;
 	public static final byte FLAG_USED = 2;
 	public static final byte FLAG_FREE = 0;
-	public static final int FLAG_OFFSET=0;
-	public static final int META_COUNT_OFFSET=1;
+	public static final int FLAG_OFFSET = 0;
+	public static final int META_COUNT_OFFSET = 1;
 	
 	private byte activeFlag; //1 means active;2 means used;0 means free
 	
@@ -17,7 +17,7 @@ public class Head {
 	private final AtomicInteger metaCount = new AtomicInteger(0);
 	
 	/** The item offset within the storage block. */
-	private final AtomicInteger currentItemOffset = new AtomicInteger(Head.HEAD_SIZE+Meta.DEFAULT_META_AREA_SIZE);
+	private final AtomicInteger currentItemOffset = new AtomicInteger(Head.HEAD_SIZE + Meta.DEFAULT_META_AREA_SIZE);
 	
 	/** The meta offset within the meta data block. */
 	private final AtomicInteger currentMetaOffset = new AtomicInteger(Head.HEAD_SIZE);
@@ -26,7 +26,7 @@ public class Head {
 		this.activeFlag = FLAG_FREE;
 	}
 	
-	public Head(byte activeFlag,int metaCount) {
+	public Head(byte activeFlag, int metaCount) {
 		this.activeFlag = activeFlag;
 		this.metaCount.set(metaCount);
 	}

@@ -43,7 +43,7 @@ public class SimpleCacheTest {
     }
 
     @Test
-    public void testQuickCache() throws Exception {
+    public void testSimpleCache() throws Exception {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(storageMode);
         cache = new SimpleCache<String>(TEST_DIR, config);
@@ -76,7 +76,7 @@ public class SimpleCacheTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalidFileDir() {
-        String fakeDir = "dltestDB://quickcache_test/asdl";
+        String fakeDir = "dltestDB://simplecache_test/asdl";
         CacheConfig config = new CacheConfig();
         try {
             cache = new SimpleCache<String>(fakeDir, config);
