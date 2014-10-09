@@ -7,7 +7,7 @@ import java.util.Random;
 
 public class TestUtil {
 
-    static final String AB = "";
+    static final String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     static Random rd = new Random();
 
     public static final String TEST_BASE_DIR = "d:/cache_test/";

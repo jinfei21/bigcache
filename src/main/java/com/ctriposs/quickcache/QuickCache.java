@@ -153,24 +153,24 @@ public class QuickCache<K> implements ICache<K> {
 		}
 		
 		try {
-			
 			if(expireLock != null) {
 				expireLock.readLock().lock();
 			}
 			if(migrateLock != null) {
 				migrateLock.readLock().lock();
 			}
+
 			Pointer oldPointer = pointerMap.remove(wKey);
             if (oldPointer != null) {
             	synchronized (oldPointer) {
             		Pointer checkPointer = pointerMap.get(wKey);
-            		if(oldPointer==checkPointer) {
+            		if(oldPointer == checkPointer) {
             			byte[] payload = storageManager.retrieve(oldPointer);
             			byte[] bytes = new byte[1];
             			storageManager.store(wKey.getKey(),bytes,0);
 		                usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
 						return payload;
-            		}else if(checkPointer !=null) {
+            		}else if(checkPointer != null) {
             			byte[] payload = storageManager.retrieve(oldPointer);
             			byte[] bytes = new byte[1];
             			storageManager.store(wKey.getKey(),bytes,0);
