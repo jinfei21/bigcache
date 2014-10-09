@@ -49,7 +49,7 @@ public class SimpleCacheUnitTest {
         cache.put(5, "F".getBytes());
         return cache;
     }
-/*
+
     @Test
     public void testGet() throws Exception {
         cache = cache();
@@ -60,8 +60,7 @@ public class SimpleCacheUnitTest {
         assertEquals(new String(cache.get(4)), "E");
         assertEquals(new String(cache.get(5)), "F");
     }
-//*/    
-/*
+
     @Test
     public void testPut() throws Exception {
         cache = cache();
@@ -72,8 +71,7 @@ public class SimpleCacheUnitTest {
         cache.put(0, "W".getBytes());
         assertEquals(new String(cache.get(0)), "W");
     }
-//*/
-/*    
+
     @Test
     public void testDelete() throws Exception {
         cache = cache();
@@ -85,15 +83,14 @@ public class SimpleCacheUnitTest {
         assertNull(payload);
         assertNull(cache.get(6));
     }
-//*/
-/*
+
     @Test
     public void testContain() throws Exception {
         cache = cache();
         assertTrue(cache.contains(0));
         assertFalse(cache.contains(6));
     }
-//*/
+
     @After
     public void close() throws IOException {
         if (cache == null)
