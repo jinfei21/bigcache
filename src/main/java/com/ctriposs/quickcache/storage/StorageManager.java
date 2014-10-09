@@ -119,13 +119,11 @@ public class StorageManager {
                 list = FileUtil.listFiles(directory);
                 for(File file : list) {
                     IBlock block = new StorageBlock(file, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
-                    block.getAllValidMeta();
                     if(block.getMetaCount() == 0) {
                         freeBlocks.offer(block);
                     }else {
                         usedBlocks.add(block);
                     }
-
                 }
                 break;
 		}
@@ -139,13 +137,13 @@ public class StorageManager {
 		if(this.activeBlock == null) {
 			this.activeBlock = new StorageBlock(dir, blockCount.incrementAndGet(), this.capacityPerBlock, storageMode);
 		}
-		this.activeBlock.active();
 	}
 	
 	public void loadPointerMap(ConcurrentMap<WrapperKey, Pointer> map)throws IOException {
         synchronized (this) {
         	Map<WrapperKey, Long> deleteMap = new HashMap<WrapperKey, Long>();
         	Iterator<IBlock> it = usedBlocks.iterator();
+        	//collect all delete meta 
         	while (it.hasNext()) {
         		IBlock block = it.next();
         		
@@ -154,20 +152,36 @@ public class StorageManager {
         			if(meta.getLastAccessTime()==0) {
         				break;
         			}
-					Item item = block.readItem(meta);
-					WrapperKey wKey = new WrapperKey(item.getKey());
-					
-					if(meta.getTtl()==0) {
+										
+					if(meta.getTtl() == Meta.TTL_DELETE) {
+						Item item = block.readItem(meta);
+						WrapperKey wKey = new WrapperKey(item.getKey());
 						Long accesstime = deleteMap.get(wKey);
 						if(accesstime==null) {
 							deleteMap.put(wKey, meta.getLastAccessTime());
 						}else {
-							if(accesstime<meta.getLastAccessTime()) {
+							if(accesstime<=meta.getLastAccessTime()) {
 								deleteMap.put(wKey, meta.getLastAccessTime());
 							}
 						}
-						
-					}else {
+						block.markDirty(wKey.getKey().length+Meta.META_SIZE+1);
+					}
+        		}        		
+			}
+        	
+        	it = usedBlocks.iterator();
+        	//recovery data from file
+        	while (it.hasNext()) {
+        		IBlock block = it.next();
+        		for(int index=0;index<Meta.MAX_META_COUNT;index++) {
+        			Meta meta = block.readMeta(index);
+        			if(meta.getLastAccessTime()==0) {
+        				break;
+        			}
+					
+					if(meta.getTtl() != Meta.TTL_DELETE) {
+						Item item = block.readItem(meta);
+						WrapperKey wKey = new WrapperKey(item.getKey());
 						Long accesstime = deleteMap.get(wKey);
 						Pointer newPointer = new Pointer(block, meta.getMetaOffset(), item.getKey().length, item.getValue().length, meta.getTtl(),meta.getLastAccessTime());
 						if(accesstime==null) {
@@ -175,19 +189,24 @@ public class StorageManager {
 							if(oldPointer==null) {
 								map.put(wKey, newPointer);
 							}else {
-								if(oldPointer.getLastAccessTime()<newPointer.getLastAccessTime()) {
-									map.put(wKey, newPointer);							
+								if(oldPointer.getLastAccessTime()<=newPointer.getLastAccessTime()) {
+									map.put(wKey, newPointer);
+									oldPointer.getBlock().markDirty(oldPointer.getItemSize()+Meta.META_SIZE);
+								}else {
+									newPointer.getBlock().markDirty(newPointer.getItemSize()+Meta.META_SIZE);
 								}
 							}
 						}else {
-							if(accesstime<newPointer.getLastAccessTime()) {
+							if(accesstime<=newPointer.getLastAccessTime()) {
 								map.put(wKey, newPointer);
+							}else {
+								newPointer.getBlock().markDirty(newPointer.getItemSize()+Meta.META_SIZE);
 							}
 						}
 						
 					}
-        		}        		
-			}
+        		}
+        	}
         }
 	}
 	
@@ -255,9 +274,7 @@ public class StorageManager {
 					}
 					pointer = freeBlock.store(key,value,ttl);
 					this.usedBlocks.add(this.activeBlock);
-					this.activeBlock.used();
 					this.activeBlock = freeBlock;
-					this.activeBlock.active();
 					return pointer;
 				}
 				
@@ -281,7 +298,8 @@ public class StorageManager {
 
 	
 	public int markDirty(Pointer pointer) {
-		return pointer.getBlock().markDirty(pointer);
+		int dirtySize = pointer.getItemSize()+Meta.META_SIZE;
+		return pointer.getBlock().markDirty(dirtySize);
 	}
 
     /**

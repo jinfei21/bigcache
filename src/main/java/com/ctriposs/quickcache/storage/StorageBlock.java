@@ -26,17 +26,19 @@ public class StorageBlock implements IBlock {
 	private final int metaCapacity;
 	
 	/** The dirty storage. */
-	private final AtomicInteger dirtyStorage = new AtomicInteger(Head.HEAD_SIZE);
+	private final AtomicInteger dirtyStorage = new AtomicInteger(0);
 	
 	/** The used storage. */
-	private final AtomicInteger usedStorage = new AtomicInteger(Head.HEAD_SIZE);
+	private final AtomicInteger usedStorage = new AtomicInteger(0);
 	
 	/** The underlying storage. */
 	private IStorage underlyingStorage;	
 	
-	/** The block head. */
-	private final Head head;
+	/** The item offset within the active block.*/
+	private final AtomicInteger currentItemOffset = new AtomicInteger(Meta.DEFAULT_META_AREA_SIZE);
 	
+	/** The meta offset within the active block.*/
+	private final AtomicInteger currentMetaOffset = new AtomicInteger(0);
 	
 	/**
 	 * Instantiates a new storage block.
@@ -60,8 +62,7 @@ public class StorageBlock implements IBlock {
 			this.underlyingStorage = new OffHeapStorage(capacity);
 			break;
 		}
-		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE + Head.HEAD_SIZE;
-		this.head = new Head();
+		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE;
 	}
 	
 	/**
@@ -86,17 +87,7 @@ public class StorageBlock implements IBlock {
                 this.underlyingStorage = new OffHeapStorage(capacity);
                 break;
 		}
-		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE + Head.HEAD_SIZE;
-		this.head = loadHead();
-	}
-	
-	private Head loadHead()throws IOException{
-		byte flag[] = new byte[1];
-		underlyingStorage.get(Head.FLAG_OFFSET, flag);
-		byte count[] = new byte[4];
-		underlyingStorage.get(Head.META_COUNT_OFFSET, count);
-
-        return new Head(flag[0],ByteUtil.ToInt(count));
+		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE;
 	}
 	
 	/**
@@ -110,8 +101,6 @@ public class StorageBlock implements IBlock {
 	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
 		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
 		
-		// write head
-		head.incMetaCount();
 		// write meta
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
@@ -145,8 +134,8 @@ public class StorageBlock implements IBlock {
 	 */
 	protected Allocation allocate(int payloadLength) {
 		
-		int itemOffset = head.addAndGetCurrentItemOffset(payloadLength);
-		int metaOffset = head.addAndGetCurrentMetaOffset(Meta.META_SIZE);
+		int itemOffset = currentItemOffset.addAndGet(payloadLength);
+		int metaOffset = currentMetaOffset.addAndGet(Meta.META_SIZE);
 		if(capacity < itemOffset || metaCapacity < metaOffset){
 			return null;
 		}
@@ -185,16 +174,13 @@ public class StorageBlock implements IBlock {
 
 
 	@Override
-	public int markDirty(Pointer pointer) {
-		return dirtyStorage.addAndGet(pointer.getItemSize()+Meta.META_SIZE);
+	public int markDirty(int dirtySize) {
+		return dirtyStorage.addAndGet(dirtySize);
 	}
 	
 	@Override
 	public void close() throws IOException {
 		if (underlyingStorage != null) {
-		
-			underlyingStorage.put(Head.FLAG_OFFSET, ByteUtil.toBytes(head.getActiveFlag()));
-			underlyingStorage.put(Head.META_COUNT_OFFSET, ByteUtil.toBytes(head.getCurrentMetaCount()));
 			underlyingStorage.close();
 		}
 	}
@@ -249,8 +235,7 @@ public class StorageBlock implements IBlock {
 
 	@Override
 	public void free() {
-		head.reset();
-		dirtyStorage.set(Head.HEAD_SIZE);
+		dirtyStorage.set(0);
 		usedStorage.set(0);
 		underlyingStorage.free();
 	}
@@ -266,26 +251,10 @@ public class StorageBlock implements IBlock {
 		}
 	}
 
-	@Override
-	public void active() {
-		head.setActiveFlag(Head.FLAG_ACTIVE);
-	}
-
-	@Override
-	public void used() {
-		head.setActiveFlag(Head.FLAG_USED);
-	}
-
-
-	@Override
-	public int getMetaCount() {
-		return head.getCurrentMetaCount();
-	}
-
 	public Meta readMeta(int index) throws IOException {
-		Meta meta;
+		Meta meta = null;
 
-		int offset = Head.HEAD_SIZE + index * Meta.META_SIZE;
+		int offset = index * Meta.META_SIZE;
 		byte[] bytes = new byte[4];
 		underlyingStorage.get(offset + Meta.KEY_OFFSET, bytes);
 		int keyOffset = ByteUtil.ToInt(bytes);
@@ -321,7 +290,6 @@ public class StorageBlock implements IBlock {
 		}
 		dirtyStorage.set(capacity - useSize);
 		usedStorage.set(useSize);
-		head.setCurrentMetaCount(i);
 		if(getDirtyRatio() < QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD) {
 			list.clear();
 		}
@@ -341,6 +309,18 @@ public class StorageBlock implements IBlock {
 		underlyingStorage.get(meta.getKeyOffSet()+meta.getKeySize(), bytes);
 		item.setValue(bytes);
 		return item;
+	}
+
+	@Override
+	public int getMetaCount() throws IOException {
+		int i=0;
+		for (; i < Meta.MAX_META_COUNT; i++) {
+			Meta meta = readMeta(i);
+			if(0==meta.getLastAccessTime()) {
+				break;
+			}
+		}
+		return i;
 	}
 
 }

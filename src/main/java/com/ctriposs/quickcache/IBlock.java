@@ -42,10 +42,10 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	/**
 	 *  Marks exSpace as dirty.
 	 * 
-	 * @param pointer the pointer
-	 * @return space size for pointer
+	 * @param dirty size
+	 * @return total dirty size
 	 */
-	int markDirty(Pointer pointer);
+	int markDirty(int dirtySzie);
 	
 	/**
 	 * Get all valid meta of this storage block
@@ -114,15 +114,6 @@ public interface IBlock extends Comparable<IBlock>, Closeable {
 	 * 
 	 * @return count
 	 */
-	int getMetaCount();
+	int getMetaCount()throws IOException; 
 	
-	/**
-	 * Active the storage.
-	 */
-	void active();
-	
-	/**
-	 * Used the storage.
-	 */
-	void used();
 }

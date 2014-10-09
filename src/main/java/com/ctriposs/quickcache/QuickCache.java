@@ -171,9 +171,10 @@ public class QuickCache<K> implements ICache<K> {
             		}
         			byte[] payload = storageManager.retrieve(checkPointer);
         			byte[] bytes = new byte[1];
-        			storageManager.store(wKey.getKey(),bytes,0);
+        			Pointer newPointer = storageManager.store(wKey.getKey(),bytes,Meta.TTL_DELETE);
 	                usedSize.addAndGet((checkPointer.getItemSize()+Meta.META_SIZE)  * -1);
 	                storageManager.markDirty(checkPointer);
+	                storageManager.markDirty(newPointer);
 					return payload;
             		
 				}

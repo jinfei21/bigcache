@@ -138,7 +138,9 @@ public class SimpleCache<K> implements ICache<K> {
 			//byte[] payload = storageManager.remove(oldPointer);
 			byte[] payload = storageManager.retrieve(oldPointer);
 			byte[] bytes = new byte[1];
-			storageManager.store(wKey.getKey(),bytes,0);
+			Pointer newPointer = storageManager.store(wKey.getKey(),bytes,Meta.TTL_DELETE);
+			storageManager.markDirty(oldPointer);
+			storageManager.markDirty(newPointer);
             usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
 			return payload;
 		}
