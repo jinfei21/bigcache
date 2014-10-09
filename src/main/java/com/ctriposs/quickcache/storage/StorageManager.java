@@ -160,27 +160,24 @@ public class StorageManager {
 						Long accesstime = deleteMap.get(wKey);
 						if(accesstime==null) {
 							deleteMap.put(wKey, meta.getLastAccessTime());
+							accesstime = meta.getLastAccessTime();
 						}else {
 							if(accesstime<=meta.getLastAccessTime()) {
 								deleteMap.put(wKey, meta.getLastAccessTime());
+								accesstime = meta.getLastAccessTime();
 							}
 						}
 						block.markDirty(wKey.getKey().length+Meta.META_SIZE+1);
-					}
-        		}        		
-			}
-        	
-        	it = usedBlocks.iterator();
-        	//recovery data from file
-        	while (it.hasNext()) {
-        		IBlock block = it.next();
-        		for(int index=0;index<Meta.MAX_META_COUNT;index++) {
-        			Meta meta = block.readMeta(index);
-        			if(meta.getLastAccessTime()==0) {
-        				break;
-        			}
-					
-					if(meta.getTtl() != Meta.TTL_DELETE) {
+						Pointer oldPointer = map.get(wKey);
+						if(oldPointer!=null) {
+							if(accesstime>oldPointer.getLastAccessTime()) {
+								map.remove(wKey);
+								oldPointer.getBlock().markDirty(oldPointer.getItemSize()+Meta.META_SIZE);
+							}
+						}
+						
+					}else {
+						
 						Item item = block.readItem(meta);
 						WrapperKey wKey = new WrapperKey(item.getKey());
 						Long accesstime = deleteMap.get(wKey);
@@ -204,10 +201,10 @@ public class StorageManager {
 								newPointer.getBlock().markDirty(newPointer.getItemSize()+Meta.META_SIZE);
 							}
 						}
-						
 					}
-        		}
-        	}
+        		}        		
+			}
+        	
         }
 	}
 	
