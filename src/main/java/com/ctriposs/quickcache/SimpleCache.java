@@ -69,8 +69,8 @@ public class SimpleCache<K> implements ICache<K> {
 
 	/** The internal map. */
     private final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>();
-    
-	/** Managing the storages. */
+
+    /** Managing the storages. */
 	private final StorageManager storageManager;
 
 	
@@ -341,4 +341,8 @@ public class SimpleCache<K> implements ICache<K> {
 	public long getUsedSize() {
 		return usedSize.get();
 	}
+
+    public StorageManager getStorageManager() {
+        return storageManager;
+    }
 }

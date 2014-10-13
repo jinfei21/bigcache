@@ -21,10 +21,10 @@ public class SimpleCacheStressTest {
         int valueLengthLimit = 1024 * 16;
 
         CacheConfig config = new CacheConfig();
-        config.setStorageMode(CacheConfig.StorageMode.OffHeapFile)
+        config.setStorageMode(CacheConfig.StorageMode.PureFile)
                 .setExpireInterval(2 * 1000)
                 .setMigrateInterval(2 * 1000)
-                .setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024);
+                .setMaxOffHeapMemorySize(128 * 1024 * 1024L);
         cache = new SimpleCache<String>(TEST_DIR, config);
         Map<String, byte[]> bytesMap = new HashMap<String, byte[]>();
 
@@ -63,9 +63,17 @@ public class SimpleCacheStressTest {
                 System.out.println("counter:     " + counter);
                 System.out.println("purge       " + cache.getExpireCounter());
                 System.out.println("move        " + cache.getMigrateCounter());
-                System.out.println("size:       " + cache.getUsedSize());
+                long cacheUsed = cache.getUsedSize();
+                System.out.println("used:       " + cache.getUsedSize());
                 System.out.println();
 
+                long storeUsed = cache.getStorageManager().getUsed();
+                if (cacheUsed != storeUsed) {
+                    System.out.println("!!!! Temporarily fail the test, this could seldom occur");
+                    System.out.println("storage used: " + storeUsed + ", but cache used: " + cacheUsed);
+                }
+
+                System.out.println();
                 System.out.println(TestUtil.getMemoryFootprint());
                 long end = System.currentTimeMillis();
                 System.out.println("timeSpent = " + (end - start));
