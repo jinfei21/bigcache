@@ -237,6 +237,8 @@ public class StorageBlock implements IBlock {
 	public void free() {
 		dirtyStorage.set(0);
 		usedStorage.set(0);
+        currentItemOffset.set(Meta.DEFAULT_META_AREA_SIZE);
+        currentMetaOffset.set(0);
 		underlyingStorage.free();
 	}
 

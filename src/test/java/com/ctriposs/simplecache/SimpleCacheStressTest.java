@@ -43,7 +43,7 @@ public class SimpleCacheStressTest {
             int rndKey = random.nextInt(numKeyLimit);
             boolean put = random.nextDouble() < 0.5;
             if (put) {
-                bytes = rndStrings[random.nextInt(rndStrings.length)].getBytes();
+                bytes = rndStrings[random.nextInt(3)].getBytes();
                 bytesMap.put(String.valueOf(rndKey), bytes);
                 cache.put(String.valueOf(rndKey), bytes);
             } else {
