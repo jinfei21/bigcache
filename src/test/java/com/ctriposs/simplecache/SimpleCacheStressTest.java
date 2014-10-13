@@ -63,15 +63,8 @@ public class SimpleCacheStressTest {
                 System.out.println("counter:     " + counter);
                 System.out.println("purge       " + cache.getExpireCounter());
                 System.out.println("move        " + cache.getMigrateCounter());
-                long cacheUsed = cache.getUsedSize();
                 System.out.println("used:       " + cache.getUsedSize());
                 System.out.println();
-
-                long storeUsed = cache.getStorageManager().getUsed();
-                if (cacheUsed != storeUsed) {
-                    System.out.println("!!!! Temporarily fail the test, this could seldom occur");
-                    System.out.println("storage used: " + storeUsed + ", but cache used: " + cacheUsed);
-                }
 
                 System.out.println();
                 System.out.println(TestUtil.getMemoryFootprint());

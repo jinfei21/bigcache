@@ -341,8 +341,4 @@ public class SimpleCache<K> implements ICache<K> {
 	public long getUsedSize() {
 		return usedSize.get();
 	}
-
-    public StorageManager getStorageManager() {
-        return storageManager;
-    }
 }
