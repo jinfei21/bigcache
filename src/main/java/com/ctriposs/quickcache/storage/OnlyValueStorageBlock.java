@@ -14,16 +14,13 @@ import com.ctriposs.quickcache.utils.ByteUtil;
 
 
 
-public class StorageBlock implements IBlock {
+public class OnlyValueStorageBlock implements IBlock {
 	
 	/** The index. */
 	private final int index;
 	
 	/** The capacity. */
 	private final int capacity;
-	
-	/** The meta capacity.*/
-	private final int metaCapacity;
 	
 	/** The dirty storage. */
 	private final AtomicInteger dirtyStorage = new AtomicInteger(0);
@@ -35,11 +32,8 @@ public class StorageBlock implements IBlock {
 	private IStorage underlyingStorage;	
 	
 	/** The item offset within the active block.*/
-	private final AtomicInteger currentItemOffset = new AtomicInteger(Meta.DEFAULT_META_AREA_SIZE);
-	
-	/** The meta offset within the active block.*/
-	private final AtomicInteger currentMetaOffset = new AtomicInteger(0);
-	
+	private final AtomicInteger currentItemOffset = new AtomicInteger(0);
+
 	/**
 	 * Instantiates a new storage block.
 	 *
@@ -48,7 +42,7 @@ public class StorageBlock implements IBlock {
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
 	 */
-	public StorageBlock(String dir, int index, int capacity, StorageMode storageMode) throws IOException{
+	public OnlyValueStorageBlock(String dir, int index, int capacity, StorageMode storageMode) throws IOException{
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
@@ -62,7 +56,7 @@ public class StorageBlock implements IBlock {
 			this.underlyingStorage = new OffHeapStorage(capacity);
 			break;
 		}
-		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE;
+	
 	}
 	
 	/**
@@ -73,7 +67,7 @@ public class StorageBlock implements IBlock {
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
 	 */
-	public StorageBlock(File file, int index, int capacity, StorageMode storageMode) throws IOException{
+	public OnlyValueStorageBlock(File file, int index, int capacity, StorageMode storageMode) throws IOException{
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
@@ -87,7 +81,7 @@ public class StorageBlock implements IBlock {
                 this.underlyingStorage = new OffHeapStorage(capacity);
                 break;
 		}
-		this.metaCapacity = Meta.DEFAULT_META_AREA_SIZE;
+
 	}
 	
 	/**
@@ -99,17 +93,10 @@ public class StorageBlock implements IBlock {
 	 * @throws IOException 
 	 */
 	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
-		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
-		
-		// write meta
-		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
-		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
-		underlyingStorage.put(allocation.metaOffset + Meta.VALUE_SIZE_OFFSET, ByteUtil.toBytes(value.length));
-		underlyingStorage.put(allocation.metaOffset + Meta.LAST_ACCESS_OFFSET, ByteUtil.toBytes(pointer.getLastAccessTime()));
-		underlyingStorage.put(allocation.metaOffset + Meta.TTL_OFFSET, ByteUtil.toBytes(ttl));
+		Pointer pointer = new Pointer(this, 0, key.length, value.length, ttl);
+	
 		// write item
-		underlyingStorage.put(allocation.itemOffset, key);
-		underlyingStorage.put(allocation.itemOffset + key.length, value);
+		underlyingStorage.put(allocation.itemOffset, value);
 		// used storage update
 		usedStorage.addAndGet(payloadLength + Meta.META_SIZE);
 
@@ -135,12 +122,11 @@ public class StorageBlock implements IBlock {
 	protected Allocation allocate(int payloadLength) {
 		
 		int itemOffset = currentItemOffset.addAndGet(payloadLength);
-		int metaOffset = currentMetaOffset.addAndGet(Meta.META_SIZE);
-		if(capacity < itemOffset || metaCapacity < metaOffset){
+		if(capacity < itemOffset){
 			return null;
 		}
 
-        return new Allocation(itemOffset - payloadLength, metaOffset - Meta.META_SIZE);
+        return new Allocation(itemOffset - payloadLength);
 	}
 
 
@@ -162,13 +148,9 @@ public class StorageBlock implements IBlock {
      */
 	public byte[] remove(Pointer pointer) throws IOException {
 
-		underlyingStorage.put(pointer.getMetaOffset() + Meta.TTL_OFFSET, ByteUtil.toBytes(Meta.TTL_DELETE));	
+		
 		byte bytes[] = new byte[4];
-		underlyingStorage.get(pointer.getMetaOffset()+ Meta.KEY_OFFSET, bytes);
-		int itemOffset = ByteUtil.ToInt(bytes);
-		bytes = new byte[pointer.getValueSize()];		
-		underlyingStorage.get(itemOffset + pointer.getKeySize(), bytes);
-		dirtyStorage.addAndGet(pointer.getItemSize() + Meta.META_SIZE);
+
 		return bytes;
 	}
 
@@ -192,19 +174,14 @@ public class StorageBlock implements IBlock {
 		
 		/** The item offset. */
 		private int itemOffset;
-	
-		/** The meta offset*/
-		private int metaOffset;
 		
 		/**
 		 * Instantiates a new allocation.
 		 *
 		 * @param itemOffset offset
-		 * @param metaOffset offset
 		 */
-		public Allocation(int itemOffset, int metaOffset) {
+		public Allocation(int itemOffset) {
 			this.itemOffset = itemOffset;
-			this.metaOffset = metaOffset;
 		}
 	}
 	
@@ -237,8 +214,7 @@ public class StorageBlock implements IBlock {
 	public void free() {
 		dirtyStorage.set(0);
 		usedStorage.set(0);
-		currentItemOffset.set(Meta.DEFAULT_META_AREA_SIZE); 
-		currentMetaOffset.set(0);
+		currentItemOffset.set(0);
 		underlyingStorage.free();
 	}
 
@@ -256,45 +232,13 @@ public class StorageBlock implements IBlock {
 	public Meta readMeta(int index) throws IOException {
 		Meta meta = null;
 
-		int offset = index * Meta.META_SIZE;
-		byte[] bytes = new byte[4];
-		underlyingStorage.get(offset + Meta.KEY_OFFSET, bytes);
-		int keyOffset = ByteUtil.ToInt(bytes);
-		underlyingStorage.get(offset + Meta.KEY_SIZE_OFFSET, bytes);
-		int keySize = ByteUtil.ToInt(bytes);
-		underlyingStorage.get(offset + Meta.VALUE_SIZE_OFFSET, bytes);
-		int valueSize = ByteUtil.ToInt(bytes);
-		bytes = new byte[8];
-		underlyingStorage.get(offset + Meta.LAST_ACCESS_OFFSET, bytes);
-		long lastAccessTime = ByteUtil.ToLong(bytes);
-		underlyingStorage.get(offset + Meta.TTL_OFFSET, bytes);
-		long ttl = ByteUtil.ToLong(bytes);
-
-		meta = new Meta(offset, keyOffset, keySize, valueSize, lastAccessTime,ttl);
 		return meta;
 	}
 	
 	@Override
 	public List<Meta> getAllValidMeta() throws IOException {
 		List<Meta> list = new ArrayList<Meta>();
-		int useSize = 0;
-		int i = 0;
-		for (; i < Meta.MAX_META_COUNT; i++) {
-			Meta meta = readMeta(i);
-			if(0==meta.getLastAccessTime()) {
-				break;
-			}
-			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()||meta.getTtl() == Meta.TTL_NEVER_EXPIRE) {
-				list.add(meta);
-				useSize += (meta.getKeySize()+meta.getValueSize()+Meta.META_SIZE);
-			}
-			
-		}
-		dirtyStorage.set(capacity - useSize);
-		usedStorage.set(useSize);
-		if(getDirtyRatio() < QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD) {
-			list.clear();
-		}
+
 		return list;
 	}
 
@@ -303,25 +247,14 @@ public class StorageBlock implements IBlock {
 	@Override
 	public Item readItem(Meta meta) throws IOException {
 		Item item = new Item();
-		//read item
-		byte[] bytes = new byte[meta.getKeySize()];
-		underlyingStorage.get(meta.getKeyOffSet(), bytes);
-		item.setKey(bytes);
-		bytes = new byte[meta.getValueSize()];
-		underlyingStorage.get(meta.getKeyOffSet()+meta.getKeySize(), bytes);
-		item.setValue(bytes);
+
 		return item;
 	}
 
 	@Override
 	public int getMetaCount() throws IOException {
 		int i=0;
-		for (; i < Meta.MAX_META_COUNT; i++) {
-			Meta meta = readMeta(i);
-			if(0==meta.getLastAccessTime()) {
-				break;
-			}
-		}
+
 		return i;
 	}
 

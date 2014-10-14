@@ -1,6 +1,10 @@
 package com.ctriposs.quickcache.utils;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 
 public class ByteUtil {
 
@@ -41,34 +45,19 @@ public class ByteUtil {
 		return bytes;
 	}
 
-    public static byte[] ToBytes(Object o) {
+    public static byte[] ToBytes(Object o) throws IOException {
         if (o instanceof String) {
             return ((String) o).getBytes();
         } else if (o instanceof byte[]) {
             return ((byte[]) o);
-        } else if (o instanceof Serializable) {
+        } else{
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            ObjectOutput out = null;
-            try {
-                out = new ObjectOutputStream(bos);
-                out.writeObject(o);
-                return bos.toByteArray();
-            } catch (Exception e) {
-                return null;
-            } finally {
-                try {
-                    if (out != null) {
-                        out.close();
-                    }
-                } catch (IOException e) {/**/}
-
-                try {
-                    bos.close();
-                } catch (IOException e) {/**/}
-            }
+            ObjectOutput out = new ObjectOutputStream(bos);
+            out.writeObject(o);
+            byte[] bytes = bos.toByteArray();
+            bos.close();
+            return bytes;
         }
-
-        throw new RuntimeException("Fail to convert object to bytes");
     }
 
 	public static short ToShort(byte[] bytes) {

@@ -21,10 +21,10 @@ public class SimpleCacheStressTest {
         int valueLengthLimit = 1024 * 16;
 
         CacheConfig config = new CacheConfig();
-        config.setStorageMode(CacheConfig.StorageMode.OffHeapFile)
+        config.setStorageMode(CacheConfig.StorageMode.PureFile)
                 .setExpireInterval(2 * 1000)
-                .setMigrateInterval(2 * 1000)
-                .setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024);
+                .setMigrateInterval(2 * 1000);
+                //.setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024);
         cache = new SimpleCache<String>(TEST_DIR, config);
         Map<String, byte[]> bytesMap = new HashMap<String, byte[]>();
 
@@ -63,13 +63,15 @@ public class SimpleCacheStressTest {
                 System.out.println("counter:     " + counter);
                 System.out.println("purge       " + cache.getExpireCounter());
                 System.out.println("move        " + cache.getMigrateCounter());
-                System.out.println("size:       " + cache.getUsedSize());
+                System.out.println("size:        " + cache.getCount());            
+                System.out.println("used:         " + cache.getUsedSize());
                 System.out.println();
 
                 System.out.println(TestUtil.getMemoryFootprint());
                 long end = System.currentTimeMillis();
-                System.out.println("timeSpent = " + (end - start));
-                System.out.println("used size = " + cache.getUsedSize());
+				System.out.println("timeSpent = " + (end - start));
+				System.out.println("ttl count = " + (cache.getCount() - bytesMap.size()));
+				System.out.println("used size = " + cache.getUsedSize());
 
                 for (int i = 0; i < numKeyLimit; i++) {
                     String key = String.valueOf(i);
@@ -82,12 +84,25 @@ public class SimpleCacheStressTest {
                         throw new RuntimeException("Validation exception, key exists in cache but not in map");
                     }
                     if (mapValue != null && cacheValue == null) {
-                        throw new RuntimeException("Validation exception, key exists in map but not in cache");
+                    	cacheValue = cache.get(key);
+                    	System.out.println("Validation exception, key exists in map but not in cache");
+                        System.out.println("Key:" + key);
+                        System.out.println("Value:" + new String(cacheValue));
+                        System.out.println("Value:" + new String(mapValue));
+                        //throw new RuntimeException("Validation exception, key exists in map but not in cache");
+
                     }
                     if (cacheValue != null && mapValue != null) {
                         if (compare(mapValue, cacheValue) != 0) {
-                            throw new RuntimeException("Validation exception, value in map does not equal to cache");
+                        	System.out.println("Validation exception, value in map does not equal to cache");
+                            System.out.println("Key:" + key);
+                            System.out.println("Value:" + new String(cacheValue));
+                            System.out.println("Value:" + new String(mapValue));
+                            cacheValue = cache.get(key);
+                            System.out.println("Value:" + new String(cacheValue));
+                           // throw new RuntimeException("Validation exception, value in map does not equal to cache");
                         }
+                        
                     }
                 }
 

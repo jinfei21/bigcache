@@ -37,8 +37,8 @@ public class SimpleCachePerfTestA {
 
     @Parameterized.Parameters
     public static Collection<CacheConfig.StorageMode[]> data() throws IOException {
-        CacheConfig.StorageMode[][] data = { { CacheConfig.StorageMode.PureFile },
-                { CacheConfig.StorageMode.MapFile },
+        CacheConfig.StorageMode[][] data = { //{ CacheConfig.StorageMode.PureFile },
+               // { CacheConfig.StorageMode.MapFile },
                 { CacheConfig.StorageMode.OffHeapFile } };
         return Arrays.asList(data);
     }

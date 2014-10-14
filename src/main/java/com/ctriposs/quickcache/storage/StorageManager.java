@@ -273,6 +273,7 @@ public class StorageManager {
 					pointer = freeBlock.store(key,value,ttl);
 					this.usedBlocks.add(this.activeBlock);
 					this.activeBlock = freeBlock;
+
 					return pointer;
 				}
 				

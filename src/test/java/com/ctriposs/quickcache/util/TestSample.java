@@ -2,7 +2,7 @@ package com.ctriposs.quickcache.util;
 
 import java.io.*;
 
-public class TestSample {
+public class TestSample implements Serializable {
 
     private static final long serialVersionUID = 1L;
     public String stringA = "aaaaaaaaaa";

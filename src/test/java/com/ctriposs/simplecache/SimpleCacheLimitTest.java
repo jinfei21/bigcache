@@ -21,8 +21,8 @@ public class SimpleCacheLimitTest {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(CacheConfig.StorageMode.OffHeapFile)
                 .setExpireInterval(2 * 1000)
-                .setMigrateInterval(2 * 1000)
-                .setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024); // 50M
+                .setMigrateInterval(2 * 1000);
+                //.setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024); // 50M
         cache = new SimpleCache<String>(TEST_DIR, config);
 
         String rndString = TestUtil.randomString(10);
