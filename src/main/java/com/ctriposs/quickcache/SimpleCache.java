@@ -72,8 +72,8 @@ public class SimpleCache<K> implements ICache<K> {
 
 	/** The internal map. */
     private final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>(16, 0.75f, 1024);
-    
-	/** Managing the storages. */
+   
+    /** Managing the storages. */
 	private final StorageManager storageManager;
 
 	

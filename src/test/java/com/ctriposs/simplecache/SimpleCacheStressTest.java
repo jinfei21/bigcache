@@ -23,6 +23,7 @@ public class SimpleCacheStressTest {
         CacheConfig config = new CacheConfig();
         config.setStorageMode(CacheConfig.StorageMode.PureFile)
                 .setExpireInterval(2 * 1000)
+
                 .setMigrateInterval(2 * 1000);
                 //.setMaxOffHeapMemorySize(5 * 10 * 1024 * 1024);
         cache = new SimpleCache<String>(TEST_DIR, config);
@@ -43,7 +44,7 @@ public class SimpleCacheStressTest {
             int rndKey = random.nextInt(numKeyLimit);
             boolean put = random.nextDouble() < 0.5;
             if (put) {
-                bytes = rndStrings[random.nextInt(rndStrings.length)].getBytes();
+                bytes = rndStrings[random.nextInt(3)].getBytes();
                 bytesMap.put(String.valueOf(rndKey), bytes);
                 cache.put(String.valueOf(rndKey), bytes);
             } else {
@@ -63,10 +64,13 @@ public class SimpleCacheStressTest {
                 System.out.println("counter:     " + counter);
                 System.out.println("purge       " + cache.getExpireCounter());
                 System.out.println("move        " + cache.getMigrateCounter());
+
                 System.out.println("size:        " + cache.getCount());            
                 System.out.println("used:         " + cache.getUsedSize());
+
                 System.out.println();
 
+                System.out.println();
                 System.out.println(TestUtil.getMemoryFootprint());
                 long end = System.currentTimeMillis();
 				System.out.println("timeSpent = " + (end - start));
