@@ -5,7 +5,6 @@ import static com.ctriposs.quickcache.utils.ByteUtil.ToBytes;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ref.WeakReference;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -21,7 +20,7 @@ import com.ctriposs.quickcache.storage.StorageManager;
 import com.ctriposs.quickcache.storage.WrapperKey;
 import com.ctriposs.quickcache.utils.FileUtil;
 
-public class ValueCache<K> implements ICache<K> {
+public class AppendCache<K> implements ICache<K> {
 	
 	/** The default storage block cleaning period which is 10 minutes. */
 	public static final long DEFAULT_MIGRATE_INTERVAL = 1 * 60 * 1000;
@@ -72,13 +71,13 @@ public class ValueCache<K> implements ICache<K> {
 	private AtomicLong usedSize = new AtomicLong();
 
 	/** The internal map. */
-    private final ConcurrentMap<K, Pointer> pointerMap = new ConcurrentHashMap<K, Pointer>(16, 0.75f, 1024);
-    
-	/** Managing the storages. */
+    private final ConcurrentMap<WrapperKey, Pointer> pointerMap = new ConcurrentHashMap<WrapperKey, Pointer>(16, 0.75f, 1024);
+   
+    /** Managing the storages. */
 	private final StorageManager storageManager;
 
 	
-    public ValueCache(String dir, CacheConfig config) throws IOException {
+    public AppendCache(String dir, CacheConfig config) throws IOException {
         String cacheDir = dir;
 		if (!cacheDir.endsWith(File.separator)) {
 			cacheDir += File.separator;
@@ -95,7 +94,9 @@ public class ValueCache<K> implements ICache<K> {
                 config.getMaxOffHeapMemorySize(),
                 config.getDirtyRatioThreshold(),
                 config.getStartMode());
-
+		if(config.getStartMode() == StartMode.RecoveryFromFile) {
+			this.storageManager.loadPointerMap(pointerMap);
+		}
 		this.scheduler = new ScheduledThreadPoolExecutor(2);
 		this.scheduler.scheduleWithFixedDelay(new ExpireScheduler(this), config.getExpireInterval(), config.getExpireInterval(), TimeUnit.MILLISECONDS);
 		this.scheduler.scheduleWithFixedDelay(new MigrateScheduler(this), config.getMigrateInterval(), config.getMigrateInterval(), TimeUnit.MILLISECONDS);
@@ -134,13 +135,13 @@ public class ValueCache<K> implements ICache<K> {
 	public byte[] delete(K key) throws IOException {
 		deleteCounter.incrementAndGet();
 		checkKey(key);
-       
-		Pointer oldPointer = pointerMap.remove(key);
+        WrapperKey wKey = new WrapperKey(ToBytes(key));
+		Pointer oldPointer = pointerMap.remove(wKey);
 		if(oldPointer!=null) {
 			//byte[] payload = storageManager.remove(oldPointer);
 			byte[] payload = storageManager.retrieve(oldPointer);
 			byte[] bytes = new byte[1];
-			Pointer newPointer = storageManager.store(null,bytes,Meta.TTL_DELETE);
+			Pointer newPointer = storageManager.store(wKey.getKey(),bytes,Meta.TTL_DELETE);
 			storageManager.markDirty(oldPointer);
 			storageManager.markDirty(newPointer);
             usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
@@ -162,14 +163,17 @@ public class ValueCache<K> implements ICache<K> {
         if (value == null || value.length > MAX_VALUE_LENGTH) {
             throw new IllegalArgumentException("value is null or too long");
         }
+        WrapperKey wKey = new WrapperKey(ToBytes(key));
+   
        
-		Pointer newPointer = storageManager.store(null, value, ttl);
+		Pointer newPointer = storageManager.store(wKey.getKey(), value, ttl);
+		//*
 		while(true) {
-			Pointer oldPointer = pointerMap.get(key);
+			Pointer oldPointer = pointerMap.get(wKey);
 			if(oldPointer != null){
 				if(oldPointer.getCreateNanoTime()<=newPointer.getCreateNanoTime()) {
 
-					if(pointerMap.replace(key, oldPointer, newPointer)) {
+					if(pointerMap.replace(wKey, oldPointer, newPointer)) {
 						storageManager.markDirty(oldPointer); 
 						break;
 					}
@@ -178,7 +182,7 @@ public class ValueCache<K> implements ICache<K> {
 					break;
 				}
 			} else {
-				Pointer checkPointer = pointerMap.putIfAbsent(key, newPointer);
+				Pointer checkPointer = pointerMap.putIfAbsent(wKey, newPointer);
 				if (checkPointer != null) {
 					if (checkPointer.getCreateNanoTime() >= newPointer.getCreateNanoTime()) {
 						storageManager.markDirty(newPointer);
@@ -189,7 +193,8 @@ public class ValueCache<K> implements ICache<K> {
 					break;
 				}
 			}
-		}
+		}//*/
+		
 
 	}
 
@@ -221,17 +226,17 @@ public class ValueCache<K> implements ICache<K> {
     
 	abstract static class DaemonWorker<K> implements Runnable {
 
-	    private WeakReference<ValueCache> cacheHolder;
+	    private WeakReference<AppendCache> cacheHolder;
 	    private ScheduledExecutorService scheduler;
 	    
-	    public DaemonWorker(ValueCache<K> cache) {
+	    public DaemonWorker(AppendCache<K> cache) {
 			this.scheduler = cache.scheduler;
-	        this.cacheHolder = new WeakReference<ValueCache>(cache);
+	        this.cacheHolder = new WeakReference<AppendCache>(cache);
 	    }
 		
 	    @Override
 	    public void run() {
-	    	ValueCache cache = cacheHolder.get();
+	    	AppendCache cache = cacheHolder.get();
 	        if (cache == null) {
 	            // cache is recycled abnormally
 	            if (scheduler != null) {
@@ -243,61 +248,63 @@ public class ValueCache<K> implements ICache<K> {
 	        process(cache);
 	    }
 	    
-	    public abstract void process(ValueCache<K> cache);	    
+	    public abstract void process(AppendCache<K> cache);	    
 	}
 	
 	class MigrateScheduler<K> extends DaemonWorker<K> {
 	    
-	    public MigrateScheduler(ValueCache<K> cache) {
+	    public MigrateScheduler(AppendCache<K> cache) {
 			super(cache);
 		}
 
 		@Override
-		public void process(ValueCache<K> cache) {
+		public void process(AppendCache<K> cache) {
 			
 			migrateCounter.incrementAndGet();
-			Set<IBlock> dirtyBlocks = cache.storageManager.getDirtyBlocks();
-			for (K key : cache.pointerMap.keySet()) {
-				Pointer oldPointer = pointerMap.get(key);
-				if(oldPointer != null) {	
-					if(dirtyBlocks.contains(oldPointer.getBlock())) {
-						try {
-							Pointer newPointer = storageManager.store(null, null, 0L);							
-							if(cache.pointerMap.replace(key, oldPointer, newPointer)) {
-								storageManager.markDirty(oldPointer);								
-							}else {
-								storageManager.markDirty(newPointer);
+			for(IBlock block:cache.storageManager.getDirtyBlocks()) {
+				try {
+					for(Meta meta : block.getAllValidMeta()) {
+						Item item = block.readItem(meta);
+						WrapperKey wKey = new WrapperKey(item.getKey());
+						Pointer oldPointer = pointerMap.get(wKey);
+						if(oldPointer != null) {		
+							if(oldPointer.getBlock() == block&&meta.getLastAccessTime()==oldPointer.getLastAccessTime()) {
+								Pointer newPointer = storageManager.store(item.getKey(), item.getValue(), meta.getTtl());							
+								if(pointerMap.replace(wKey, oldPointer, newPointer)) {
+									storageManager.markDirty(oldPointer);								
+								}else {
+									storageManager.markDirty(newPointer);
+								}
 							}
-						}catch(Throwable t) {
-							migrateErrorCounter.incrementAndGet();
 						}
 					}
+					block.free();
+				}catch(Throwable t) {
+					migrateErrorCounter.incrementAndGet();
 				}
-				
 			}
-						
 			storageManager.clean();
 		}
 	}
 	
 	class ExpireScheduler<K> extends DaemonWorker<K> {
  
-		public ExpireScheduler(ValueCache<K> cache) {
+		public ExpireScheduler(AppendCache<K> cache) {
 			super(cache);
 		}
 
 		@Override
-		public void process(ValueCache<K> cache) {
+		public void process(AppendCache<K> cache) {
 			expireCounter.incrementAndGet();
 
-			for (K key : cache.pointerMap.keySet()) {
-				Pointer oldPointer = pointerMap.get(key);
+			for (WrapperKey wKey : pointerMap.keySet()) {
+				Pointer oldPointer = pointerMap.get(wKey);
 				if (oldPointer != null) {
 					if (oldPointer.isExpired()) {
 						try {
-							if (pointerMap.remove(key, oldPointer)) {							
-								int size = storageManager.markDirty(oldPointer);
-								usedSize.addAndGet(-1*size);
+							if (pointerMap.remove(wKey, oldPointer)) {							
+								storageManager.markDirty(oldPointer);
+								usedSize.addAndGet((oldPointer.getItemSize()+Meta.META_SIZE) * -1);
 							}
 						}catch(Throwable t) {
 							expireErrorCounter.incrementAndGet();
@@ -342,5 +349,9 @@ public class ValueCache<K> implements ICache<K> {
 
 	public long getUsedSize() {
 		return usedSize.get();
+	}
+	
+	public int getCount() {
+		return pointerMap.size();
 	}
 }

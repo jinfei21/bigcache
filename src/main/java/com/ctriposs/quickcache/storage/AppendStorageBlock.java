@@ -14,7 +14,7 @@ import com.ctriposs.quickcache.utils.ByteUtil;
 
 
 
-public class OnlyValueStorageBlock implements IBlock {
+public class AppendStorageBlock implements IBlock {
 	
 	/** The index. */
 	private final int index;
@@ -33,7 +33,7 @@ public class OnlyValueStorageBlock implements IBlock {
 	
 	/** The item offset within the active block.*/
 	private final AtomicInteger currentItemOffset = new AtomicInteger(0);
-
+	
 	/**
 	 * Instantiates a new storage block.
 	 *
@@ -42,7 +42,7 @@ public class OnlyValueStorageBlock implements IBlock {
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
 	 */
-	public OnlyValueStorageBlock(String dir, int index, int capacity, StorageMode storageMode) throws IOException{
+	public AppendStorageBlock(String dir, int index, int capacity, StorageMode storageMode) throws IOException{
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
@@ -56,7 +56,6 @@ public class OnlyValueStorageBlock implements IBlock {
 			this.underlyingStorage = new OffHeapStorage(capacity);
 			break;
 		}
-	
 	}
 	
 	/**
@@ -67,7 +66,7 @@ public class OnlyValueStorageBlock implements IBlock {
 	 * @param capacity the capacity
 	 * @throws IOException exception throws when failing to create the storage block
 	 */
-	public OnlyValueStorageBlock(File file, int index, int capacity, StorageMode storageMode) throws IOException{
+	public AppendStorageBlock(File file, int index, int capacity, StorageMode storageMode) throws IOException{
 		this.index = index;
 		this.capacity = capacity;
 		switch (storageMode) {
@@ -81,7 +80,6 @@ public class OnlyValueStorageBlock implements IBlock {
                 this.underlyingStorage = new OffHeapStorage(capacity);
                 break;
 		}
-
 	}
 	
 	/**
@@ -92,15 +90,26 @@ public class OnlyValueStorageBlock implements IBlock {
 	 * @return the pointer
 	 * @throws IOException 
 	 */
-	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
-		Pointer pointer = new Pointer(this, 0, key.length, value.length, ttl);
-	
-		// write item
-		underlyingStorage.put(allocation.itemOffset, value);
+	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl) throws IOException {
+		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
+		underlyingStorage.put(allocation.metaOffset, makeItemBytes(allocation, pointer, key, value));
 		// used storage update
-		usedStorage.addAndGet(payloadLength + Meta.META_SIZE);
-
+		usedStorage.addAndGet(pointer.getItemSize() + Meta.META_SIZE);
 		return pointer;
+	}
+
+	
+	private byte[] makeItemBytes(Allocation allocation,Pointer pointer,byte[] key, byte[] value) {		
+		byte[] bytes = new byte[Meta.META_SIZE+key.length+value.length];
+		System.arraycopy(ByteUtil.toBytes(pointer.getLastAccessTime()), 0, bytes, AppendData.LAST_ACCESS_OFFSET, 8);
+		System.arraycopy(ByteUtil.toBytes(pointer.getTtl()), 0, bytes, AppendData.TTL_OFFSET, 8);
+		
+		System.arraycopy(ByteUtil.toBytes(key.length), 0, bytes, AppendData.KEY_SIZE_OFFSET, 4);
+		System.arraycopy(ByteUtil.toBytes(value.length), 0, bytes, AppendData.VALUE_SIZE_OFFSET, 4);
+
+		System.arraycopy(key, 0, bytes, AppendData.META_SIZE, key.length);
+		System.arraycopy(value, 0, bytes, AppendData.META_SIZE + key.length, value.length);
+		return bytes;
 	}
 
 	@Override
@@ -110,7 +119,7 @@ public class OnlyValueStorageBlock implements IBlock {
 		if (allocation == null)
             return null; // not enough storage available
 
-        return store(allocation, key, value, ttl, payloadLength);
+        return store(allocation, key, value, ttl);
 	}
 
 	/**
@@ -121,36 +130,20 @@ public class OnlyValueStorageBlock implements IBlock {
 	 */
 	protected Allocation allocate(int payloadLength) {
 		
-		int itemOffset = currentItemOffset.addAndGet(payloadLength);
+		int itemOffset = currentItemOffset.addAndGet(AppendData.META_SIZE+payloadLength);
+		
 		if(capacity < itemOffset){
 			return null;
 		}
 
-        return new Allocation(itemOffset - payloadLength);
+        return new Allocation(itemOffset - payloadLength- AppendData.META_SIZE);
 	}
 
 
 	@Override
 	public byte[] retrieve(Pointer pointer) throws IOException {
-		byte bytes[] = new byte[4];
-		underlyingStorage.get(pointer.getMetaOffset() + Meta.KEY_OFFSET, bytes);
-		int itemOffset = ByteUtil.ToInt(bytes);
-		bytes = new byte[pointer.getValueSize()];
-		underlyingStorage.get(itemOffset + pointer.getKeySize(), bytes);
-		return bytes;
-	}
-
-    /**
-     * Remove the pointer corresponding item (just mark dirty)
-     * @param pointer the pointer
-     * @return the byte array of value
-     * @throws IOException
-     */
-	public byte[] remove(Pointer pointer) throws IOException {
-
-		
-		byte bytes[] = new byte[4];
-
+		byte bytes[] = new byte[pointer.getValueSize()];
+		underlyingStorage.get(pointer.getMetaOffset()+AppendData.META_SIZE+pointer.getKeySize(), bytes);
 		return bytes;
 	}
 
@@ -173,15 +166,17 @@ public class OnlyValueStorageBlock implements IBlock {
 	private static class Allocation {
 		
 		/** The item offset. */
-		private int itemOffset;
+		private int metaOffset;
+	
 		
 		/**
 		 * Instantiates a new allocation.
 		 *
 		 * @param itemOffset offset
+		 * @param metaOffset offset
 		 */
-		public Allocation(int itemOffset) {
-			this.itemOffset = itemOffset;
+		public Allocation(int metaOffset) {
+			this.metaOffset = metaOffset;
 		}
 	}
 	
@@ -214,7 +209,7 @@ public class OnlyValueStorageBlock implements IBlock {
 	public void free() {
 		dirtyStorage.set(0);
 		usedStorage.set(0);
-		currentItemOffset.set(0);
+		currentItemOffset.set(0); 
 		underlyingStorage.free();
 	}
 
@@ -229,16 +224,29 @@ public class OnlyValueStorageBlock implements IBlock {
 		}
 	}
 
-	public Meta readMeta(int index) throws IOException {
-		Meta meta = null;
 
-		return meta;
-	}
 	
 	@Override
 	public List<Meta> getAllValidMeta() throws IOException {
 		List<Meta> list = new ArrayList<Meta>();
-
+		int useSize = 0;
+		int i = 0;
+		for (; i < Meta.MAX_META_COUNT; i++) {
+			Meta meta = readMeta(i);
+			if(0==meta.getLastAccessTime()) {
+				break;
+			}
+			if ((System.currentTimeMillis() - meta.getLastAccessTime()) < meta.getTtl()||meta.getTtl() == Meta.TTL_NEVER_EXPIRE) {
+				list.add(meta);
+				useSize += (meta.getKeySize()+meta.getValueSize()+Meta.META_SIZE);
+			}
+			
+		}
+		dirtyStorage.set(capacity - useSize);
+		usedStorage.set(useSize);
+		if(getDirtyRatio() < QuickCache.DEFAULT_DIRTY_RATIO_THRESHOLD) {
+			list.clear();
+		}
 		return list;
 	}
 
@@ -247,15 +255,38 @@ public class OnlyValueStorageBlock implements IBlock {
 	@Override
 	public Item readItem(Meta meta) throws IOException {
 		Item item = new Item();
-
+		//read item
+		byte[] bytes = new byte[meta.getKeySize()];
+		underlyingStorage.get(meta.getKeyOffSet(), bytes);
+		item.setKey(bytes);
+		bytes = new byte[meta.getValueSize()];
+		underlyingStorage.get(meta.getKeyOffSet()+meta.getKeySize(), bytes);
+		item.setValue(bytes);
 		return item;
 	}
 
 	@Override
 	public int getMetaCount() throws IOException {
 		int i=0;
-
+		for (; i < Meta.MAX_META_COUNT; i++) {
+			Meta meta = readMeta(i);
+			if(0==meta.getLastAccessTime()) {
+				break;
+			}
+		}
 		return i;
+	}
+
+	@Override
+	public byte[] remove(Pointer pointer) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Meta readMeta(int index) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

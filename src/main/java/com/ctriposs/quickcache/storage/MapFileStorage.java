@@ -42,6 +42,7 @@ public class MapFileStorage implements IStorage {
 		if (raf != null) {
 			raf.close();
 		}
+		
 		//implies system GC
 		threadLocalBuffer.set(null);
 		threadLocalBuffer = null;
@@ -63,10 +64,6 @@ public class MapFileStorage implements IStorage {
 	public void free() {
 		MappedByteBuffer buffer = (MappedByteBuffer) threadLocalBuffer.getSourceBuffer();
 		buffer.clear();
-		try {
-			raf.getChannel().truncate(0);
-		} catch (IOException e) {
-		}
 	}
 
 	private static class ThreadLocalByteBuffer extends ThreadLocal<ByteBuffer> {

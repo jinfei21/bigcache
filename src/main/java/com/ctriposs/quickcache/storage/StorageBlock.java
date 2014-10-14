@@ -98,9 +98,9 @@ public class StorageBlock implements IBlock {
 	 * @return the pointer
 	 * @throws IOException 
 	 */
-	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl, int payloadLength) throws IOException {
+	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl) throws IOException {
 		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
-		
+		/*
 		// write meta
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
 		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
@@ -110,10 +110,31 @@ public class StorageBlock implements IBlock {
 		// write item
 		underlyingStorage.put(allocation.itemOffset, key);
 		underlyingStorage.put(allocation.itemOffset + key.length, value);
+		*/
+		underlyingStorage.put(allocation.metaOffset, makeMetaBytes(allocation, pointer, key, value));
+		underlyingStorage.put(allocation.itemOffset, makeItemBytes(key, value));
 		// used storage update
-		usedStorage.addAndGet(payloadLength + Meta.META_SIZE);
+		usedStorage.addAndGet(pointer.getItemSize() + Meta.META_SIZE);
 
 		return pointer;
+	}
+	
+	private byte[] makeMetaBytes(Allocation allocation,Pointer pointer,byte[] key, byte[] value) {
+		byte[] bytes = new byte[Meta.META_SIZE];
+		
+		System.arraycopy(ByteUtil.toBytes(allocation.itemOffset), 0, bytes, Meta.KEY_OFFSET, 4);
+		System.arraycopy(ByteUtil.toBytes(key.length), 0, bytes, Meta.KEY_SIZE_OFFSET, 4);
+		System.arraycopy(ByteUtil.toBytes(value.length), 0, bytes, Meta.VALUE_SIZE_OFFSET, 4);
+		System.arraycopy(ByteUtil.toBytes(pointer.getLastAccessTime()), 0, bytes, Meta.LAST_ACCESS_OFFSET, 8);
+		System.arraycopy(ByteUtil.toBytes(pointer.getTtl()), 0, bytes, Meta.TTL_OFFSET, 8);
+		return bytes;
+	}
+	
+	private byte[] makeItemBytes(byte[] key, byte[] value) {		
+		byte[] bytes = new byte[key.length+value.length];
+		System.arraycopy(key, 0, bytes, 0, key.length);
+		System.arraycopy(value, 0, bytes, key.length, value.length);
+		return bytes;
 	}
 
 	@Override
@@ -123,7 +144,7 @@ public class StorageBlock implements IBlock {
 		if (allocation == null)
             return null; // not enough storage available
 
-        return store(allocation, key, value, ttl, payloadLength);
+        return store(allocation, key, value, ttl);
 	}
 
 	/**

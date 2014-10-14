@@ -2,6 +2,7 @@ package com.ctriposs.quickcache.storage;
 
 public class Item {
 	
+
 	private byte[] key;
 	private byte[] value;
 	
