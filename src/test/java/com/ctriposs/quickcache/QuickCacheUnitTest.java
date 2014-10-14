@@ -27,9 +27,9 @@ public class QuickCacheUnitTest {
     @Parameterized.Parameters
     public static Collection<CacheConfig.StorageMode[]> data() {
         CacheConfig.StorageMode[][] data = {
-                {CacheConfig.StorageMode.PureFile},
-                {CacheConfig.StorageMode.MapFile},
-                {CacheConfig.StorageMode.OffHeapFile}
+               // {CacheConfig.StorageMode.PureFile},
+                {CacheConfig.StorageMode.MapFile}
+                //{CacheConfig.StorageMode.OffHeapFile}
         };
 
         return Arrays.asList(data);

@@ -1,9 +1,12 @@
 package com.ctriposs.quickcache;
 
+import com.ctriposs.quickcache.CacheConfig;
+import com.ctriposs.quickcache.QuickCache;
 import com.ctriposs.quickcache.CacheConfig.*;
 import com.ctriposs.quickcache.util.TestSample;
 import com.ctriposs.quickcache.util.TestUtil;
 import com.ctriposs.quickcache.utils.FileUtil;
+
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,8 +41,9 @@ public class QuickCachePerfTestA {
     public static Collection<StorageMode[]> data() throws IOException {
         StorageMode[][] data = {
         		{ StorageMode.PureFile },
-                { StorageMode.MapFile },
-                { StorageMode.OffHeapFile } };
+                { StorageMode.MapFile }
+                //{ StorageMode.OffHeapFile }
+                };
         return Arrays.asList(data);
     }
 
@@ -52,7 +56,7 @@ public class QuickCachePerfTestA {
         QuickCache<String> cache = new QuickCache<String>(TEST_DIR, config);
         return cache;
     }
-
+    
     @Test
     public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
         final int count = 400 * 1000;
