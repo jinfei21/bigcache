@@ -209,13 +209,13 @@ public class StorageManager {
 	}
 	
 	private IBlock createNewBlock(int index) throws IOException {
-		if (this.allowedOffHeapModeBlockCount > 0) {
-			IBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, this.storageMode);
-			this.allowedOffHeapModeBlockCount--;
-			return block;
-		} else {
-			return new StorageBlock(this.dir, index, this.capacityPerBlock, StorageMode.PureFile);
-		}
+		//if (this.allowedOffHeapModeBlockCount > 0) {
+		//	IBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
+		//	this.allowedOffHeapModeBlockCount--;
+		//	return block;
+		//} else {
+			return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
+		//}
 	}
 
 

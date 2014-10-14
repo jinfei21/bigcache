@@ -36,7 +36,8 @@ public class QuickCachePerfTestA {
 
     @Parameterized.Parameters
     public static Collection<StorageMode[]> data() throws IOException {
-        StorageMode[][] data = { { StorageMode.PureFile },
+        StorageMode[][] data = {
+        		{ StorageMode.PureFile },
                 { StorageMode.MapFile },
                 { StorageMode.OffHeapFile } };
         return Arrays.asList(data);

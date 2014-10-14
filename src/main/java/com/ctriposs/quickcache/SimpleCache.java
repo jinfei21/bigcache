@@ -167,6 +167,7 @@ public class SimpleCache<K> implements ICache<K> {
    
        
 		Pointer newPointer = storageManager.store(wKey.getKey(), value, ttl);
+		//*
 		while(true) {
 			Pointer oldPointer = pointerMap.get(wKey);
 			if(oldPointer != null){
@@ -192,7 +193,8 @@ public class SimpleCache<K> implements ICache<K> {
 					break;
 				}
 			}
-		}
+		}//*/
+		
 
 	}
 
