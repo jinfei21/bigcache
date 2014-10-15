@@ -74,6 +74,11 @@ public class StorageManager {
 	 * The number of memory blocks allow to be created.
 	 */
 	private int allowedOffHeapModeBlockCount;
+
+    /**
+     * The number of memory map file allow to be created
+     */
+    private int allowedMFileCount;
 	
 	/**
 	 * Directory for cache data store
@@ -209,13 +214,15 @@ public class StorageManager {
 	}
 	
 	private IBlock createNewBlock(int index) throws IOException {
-		//if (this.allowedOffHeapModeBlockCount > 0) {
-		//	IBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
-		//	this.allowedOffHeapModeBlockCount--;
-		//	return block;
-		//} else {
-			return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
-		//}
+        if (this.storageMode == StorageMode.MapFile) {
+            if (this.allowedMFileCount > 20) {
+                return new StorageBlock(this.dir, index, this.capacityPerBlock, StorageMode.PureFile);
+            }
+
+            this.allowedMFileCount ++;
+        }
+
+        return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
 	}
 
 

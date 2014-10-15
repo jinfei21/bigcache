@@ -12,10 +12,7 @@ import org.junit.runners.Parameterized;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,8 +35,8 @@ public class SimpleCachePerfTestA {
     @Parameterized.Parameters
     public static Collection<CacheConfig.StorageMode[]> data() throws IOException {
         CacheConfig.StorageMode[][] data = {
-        		{ CacheConfig.StorageMode.PureFile },
-               // { CacheConfig.StorageMode.MapFile }
+        		//{ CacheConfig.StorageMode.PureFile },
+                { CacheConfig.StorageMode.MapFile }
                // { CacheConfig.StorageMode.OffHeapFile }
                 };
         return Arrays.asList(data);
@@ -55,10 +52,12 @@ public class SimpleCachePerfTestA {
         return cache;
     }
 
-	@Test
 	public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
 		final int count = 400 * 1000;
 		final TestSample sample = new TestSample();
+
+        Random random = new Random();
+        List<String> keyList = new LinkedList<String>();
 
 		cache = cache();
 
@@ -69,21 +68,23 @@ public class SimpleCachePerfTestA {
 			sample.intA = i;
 			sample.doubleA = i;
 			sample.longA = i;
-			cache.put(TestSample.users(user, i), sample.toBytes());
+            String key = String.valueOf(random.nextInt(count/2));
+            keyList.add(key);
+			cache.put(key, sample.toBytes());
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(TestSample.users(user, i));
+			byte[] result = cache.get(keyList.get(i));
 			assertNotNull(result);
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(TestSample.users(user, i));
+			byte[] result = cache.get(keyList.get(i));
 			TestSample re = TestSample.fromBytes(result);
 			assertEquals(i, re.intA);
 			assertEquals(i, re.doubleA, 0.0);
 			assertEquals(i, re.longA);
 		}
 		for (int i = 0; i < count; i++) {
-			cache.delete(TestSample.users(user, i));
+			cache.delete(keyList.get(i));
 		}
 		assertEquals(cache.getCount(), 0);
 		long duration = System.nanoTime() - start;
@@ -91,7 +92,7 @@ public class SimpleCachePerfTestA {
 				(int) (count * 4 * 1e6 / duration));
 	}
 
-	@Test
+    @Test
 	public void testMultiThreadReadWrite() throws InterruptedException, ExecutionException, IOException {
 		final int count = 2*1000*1000;
 		ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -155,6 +156,7 @@ public class SimpleCachePerfTestA {
             cache.close();
             FileUtil.deleteDirectory(new File(TEST_DIR));
         } catch (IOException e) {
+            System.out.println("IOException");
             System.gc();
             try {
                 FileUtil.deleteDirectory(new File(TEST_DIR));
