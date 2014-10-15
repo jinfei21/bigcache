@@ -71,11 +71,6 @@ public class StorageManager {
 	private final StartMode startMode;
 	
 	/**
-	 * The number of memory blocks allow to be created.
-	 */
-	private int allowedOffHeapModeBlockCount;
-	
-	/**
 	 * Directory for cache data store
 	 */
 	private final String dir;
@@ -89,22 +84,26 @@ public class StorageManager {
 	 * dirty ratio which controls block recycle 
 	 */
     public final double dirtyRatioThreshold;
+    
+	/**
+	 * The number of memory blocks allow to be created.
+	 */
+	private int allowedOffHeapModeBlockCount;
 	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
 			long maxOffHeapMemorySize, double dirtyRatioThreshold, StartMode startMode) throws IOException {
 		this.dirtyRatioThreshold = dirtyRatioThreshold;
 
-        if (storageMode == StorageMode.OffHeapFile) {
-            this.allowedOffHeapModeBlockCount = (int)(maxOffHeapMemorySize / capacityPerBlock);
-        } else {
-            this.allowedOffHeapModeBlockCount = 0;
-        }
-
 		this.storageMode = storageMode;
 		this.startMode = startMode;
 		this.capacityPerBlock = capacityPerBlock;
 		this.dir = dir;
+		if (storageMode != StorageMode.PureFile) {
+			this.allowedOffHeapModeBlockCount = (int) (maxOffHeapMemorySize / capacityPerBlock);
+		} else {
+			this.allowedOffHeapModeBlockCount = 0;
+		}
 		initializeBlocks(new File(dir), initialNumberOfBlocks);
 	}
 	
@@ -112,7 +111,7 @@ public class StorageManager {
 		List<File> list = null;
 		switch (startMode) {
             case ClearOldFile:
-                FileUtil.deleteDirectory(directory);
+                //FileUtil.deleteDirectory(directory);
                 list = FileUtil.listFiles(directory);
                 break;
             case RecoveryFromFile:
@@ -209,13 +208,14 @@ public class StorageManager {
 	}
 	
 	private IBlock createNewBlock(int index) throws IOException {
-		//if (this.allowedOffHeapModeBlockCount > 0) {
-		//	IBlock block = new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
-		//	this.allowedOffHeapModeBlockCount--;
-		//	return block;
-		//} else {
-			return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
-		//}
+		if(storageMode != StorageMode.PureFile) {
+			if(allowedOffHeapModeBlockCount<0) {
+				return new StorageBlock(this.dir, index, this.capacityPerBlock, StorageMode.PureFile);
+			}
+			allowedOffHeapModeBlockCount--;
+		}
+		return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
+		
 	}
 
 

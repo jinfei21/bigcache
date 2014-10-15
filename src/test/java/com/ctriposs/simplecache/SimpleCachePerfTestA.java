@@ -38,9 +38,9 @@ public class SimpleCachePerfTestA {
     @Parameterized.Parameters
     public static Collection<CacheConfig.StorageMode[]> data() throws IOException {
         CacheConfig.StorageMode[][] data = { 
-        		{ CacheConfig.StorageMode.PureFile },
-               // { CacheConfig.StorageMode.MapFile }
-               // { CacheConfig.StorageMode.OffHeapFile }
+        		//{ CacheConfig.StorageMode.PureFile }
+                { CacheConfig.StorageMode.MapFile }
+               // ,{ CacheConfig.StorageMode.OffHeapFile }
                 };
         return Arrays.asList(data);
     }
@@ -55,7 +55,7 @@ public class SimpleCachePerfTestA {
         return cache;
     }
 
-	@Test
+
 	public void testSingleThreadReadWrite() throws IOException, ClassNotFoundException {
 		final int count = 400 * 1000;
 		final TestSample sample = new TestSample();
@@ -91,7 +91,7 @@ public class SimpleCachePerfTestA {
 				(int) (count * 4 * 1e6 / duration));
 	}
 
-	@Test
+    @Test
 	public void testMultiThreadReadWrite() throws InterruptedException, ExecutionException, IOException {
 		final int count = 2*1000*1000;
 		ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
@@ -151,7 +151,7 @@ public class SimpleCachePerfTestA {
 
     @After
     public void close() throws IOException {
-        try {
+        /*try {
             cache.close();
             FileUtil.deleteDirectory(new File(TEST_DIR));
         } catch (IOException e) {
@@ -165,6 +165,6 @@ public class SimpleCachePerfTestA {
                 }
                 FileUtil.deleteDirectory(new File(TEST_DIR));
             }
-        }
+        }*/
     }
 }
