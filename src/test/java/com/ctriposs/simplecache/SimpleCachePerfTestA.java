@@ -1,28 +1,29 @@
 package com.ctriposs.simplecache;
 
-import com.ctriposs.quickcache.CacheConfig;
-import com.ctriposs.quickcache.SimpleCache;
-import com.ctriposs.quickcache.util.TestSample;
-import com.ctriposs.quickcache.util.TestUtil;
-import com.ctriposs.quickcache.utils.FileUtil;
-import org.junit.After;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import org.junit.After;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ctriposs.quickcache.CacheConfig;
+import com.ctriposs.quickcache.SimpleCache;
+import com.ctriposs.quickcache.util.TestSample;
+import com.ctriposs.quickcache.util.TestUtil;
 
 @RunWith(Parameterized.class)
 public class SimpleCachePerfTestA {
@@ -37,10 +38,12 @@ public class SimpleCachePerfTestA {
 
     @Parameterized.Parameters
     public static Collection<CacheConfig.StorageMode[]> data() throws IOException {
+
         CacheConfig.StorageMode[][] data = { 
         		//{ CacheConfig.StorageMode.PureFile }
                 { CacheConfig.StorageMode.MapFile }
                // ,{ CacheConfig.StorageMode.OffHeapFile }
+
                 };
         return Arrays.asList(data);
     }
@@ -60,6 +63,9 @@ public class SimpleCachePerfTestA {
 		final int count = 400 * 1000;
 		final TestSample sample = new TestSample();
 
+        Random random = new Random();
+        List<String> keyList = new LinkedList<String>();
+
 		cache = cache();
 
 		long start = System.nanoTime();
@@ -69,21 +75,23 @@ public class SimpleCachePerfTestA {
 			sample.intA = i;
 			sample.doubleA = i;
 			sample.longA = i;
-			cache.put(TestSample.users(user, i), sample.toBytes());
+            String key = String.valueOf(random.nextInt(count/2));
+            keyList.add(key);
+			cache.put(key, sample.toBytes());
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(TestSample.users(user, i));
+			byte[] result = cache.get(keyList.get(i));
 			assertNotNull(result);
 		}
 		for (int i = 0; i < count; i++) {
-			byte[] result = cache.get(TestSample.users(user, i));
+			byte[] result = cache.get(keyList.get(i));
 			TestSample re = TestSample.fromBytes(result);
 			assertEquals(i, re.intA);
 			assertEquals(i, re.doubleA, 0.0);
 			assertEquals(i, re.longA);
 		}
 		for (int i = 0; i < count; i++) {
-			cache.delete(TestSample.users(user, i));
+			cache.delete(keyList.get(i));
 		}
 		assertEquals(cache.getCount(), 0);
 		long duration = System.nanoTime() - start;
@@ -155,6 +163,7 @@ public class SimpleCachePerfTestA {
             cache.close();
             FileUtil.deleteDirectory(new File(TEST_DIR));
         } catch (IOException e) {
+            System.out.println("IOException");
             System.gc();
             try {
                 FileUtil.deleteDirectory(new File(TEST_DIR));

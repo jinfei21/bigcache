@@ -94,25 +94,16 @@ public class StorageBlock implements IBlock {
 	 * Stores the payload by the help of allocation.
 	 *
 	 * @param allocation the allocation
-	 * @param payloadLength the payload
 	 * @return the pointer
 	 * @throws IOException 
 	 */
 	public Pointer store(Allocation allocation, byte[] key, byte[] value, long ttl) throws IOException {
 		Pointer pointer = new Pointer(this, allocation.metaOffset, key.length, value.length, ttl);
-		/*
-		// write meta
-		underlyingStorage.put(allocation.metaOffset + Meta.KEY_OFFSET, ByteUtil.toBytes(allocation.itemOffset));
-		underlyingStorage.put(allocation.metaOffset + Meta.KEY_SIZE_OFFSET, ByteUtil.toBytes(key.length));
-		underlyingStorage.put(allocation.metaOffset + Meta.VALUE_SIZE_OFFSET, ByteUtil.toBytes(value.length));
-		underlyingStorage.put(allocation.metaOffset + Meta.LAST_ACCESS_OFFSET, ByteUtil.toBytes(pointer.getLastAccessTime()));
-		underlyingStorage.put(allocation.metaOffset + Meta.TTL_OFFSET, ByteUtil.toBytes(ttl));
-		// write item
-		underlyingStorage.put(allocation.itemOffset, key);
-		underlyingStorage.put(allocation.itemOffset + key.length, value);
-		*/
+
+        // write meta and item
 		underlyingStorage.put(allocation.metaOffset, makeMetaBytes(allocation, pointer, key, value));
 		underlyingStorage.put(allocation.itemOffset, makeItemBytes(key, value));
+
 		// used storage update
 		usedStorage.addAndGet(pointer.getItemSize() + Meta.META_SIZE);
 

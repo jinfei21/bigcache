@@ -71,6 +71,12 @@ public class StorageManager {
 	private final StartMode startMode;
 	
 	/**
+	 * The number of memory blocks allow to be created.
+	 */
+	private int allowedOffHeapModeBlockCount;
+
+	
+	/**
 	 * Directory for cache data store
 	 */
 	private final String dir;
@@ -85,10 +91,6 @@ public class StorageManager {
 	 */
     public final double dirtyRatioThreshold;
     
-	/**
-	 * The number of memory blocks allow to be created.
-	 */
-	private int allowedOffHeapModeBlockCount;
 	
 	
 	public StorageManager(String dir, int capacityPerBlock, int initialNumberOfBlocks, StorageMode storageMode,
@@ -215,7 +217,7 @@ public class StorageManager {
 			allowedOffHeapModeBlockCount--;
 		}
 		return new StorageBlock(this.dir, index, this.capacityPerBlock, storageMode);
-		
+
 	}
 
 

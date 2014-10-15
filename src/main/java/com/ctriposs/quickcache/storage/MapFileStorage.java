@@ -21,7 +21,7 @@ public class MapFileStorage implements IStorage {
 		}
 		String backFileName = dir + index + "-" + System.currentTimeMillis() + DATA_FILE_SUFFIX;
 		raf = new RandomAccessFile(backFileName, "rw");
-		MappedByteBuffer mappedByteBuffer = raf.getChannel().map(FileChannel.MapMode.PRIVATE, 0, capacity);
+        MappedByteBuffer mappedByteBuffer = raf.getChannel().map(FileChannel.MapMode.PRIVATE, 0, capacity);
 		threadLocalBuffer = new ThreadLocalByteBuffer(mappedByteBuffer);
 	}
 	
